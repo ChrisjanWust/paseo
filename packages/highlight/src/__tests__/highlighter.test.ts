@@ -2,6 +2,50 @@ import { describe, it, expect } from "vitest";
 import { highlightCode, highlightLine } from "../highlighter.js";
 
 describe("highlightCode", () => {
+  it("highlights TOML configuration files", () => {
+    const code = ["# Project settings", "[project]", 'name = "paseo"', "ports = [6767, 6768]"].join(
+      "\n",
+    );
+    const result = highlightCode(code, "pyproject.toml");
+
+    expect(result).toHaveLength(4);
+    expect(result[0]).toEqual([{ text: "# Project settings", style: "comment" }]);
+    expect(result[1]).toEqual([{ text: "[project]", style: "keyword" }]);
+    expect(result[2]).toContainEqual({ text: "name", style: "property" });
+    expect(result[2]).toContainEqual({ text: '"paseo"', style: "string" });
+    expect(result[3]).toContainEqual({ text: "6767", style: "number" });
+    expect(result[3]).toContainEqual({ text: "6768", style: "number" });
+    const reconstructedLines: string[] = [];
+    for (const line of result) {
+      reconstructedLines.push(line.map((token) => token.text).join(""));
+    }
+    expect(reconstructedLines.join("\n")).toBe(code);
+  });
+
+  it("highlights TOML literals and preserves multiline string state", () => {
+    const code = [
+      "[[servers]]",
+      "enabled = true",
+      "disabled = false",
+      "created = 2026-09-07T12:00:00Z",
+      'description = """first line',
+      '# still a string"""',
+      "# back to a comment",
+      "path = 'local/path'",
+    ].join("\n");
+    const result = highlightCode(code, ".config/settings.TOML");
+
+    expect(result).toHaveLength(8);
+    expect(result[0]).toEqual([{ text: "[[servers]]", style: "keyword" }]);
+    expect(result[1]).toContainEqual({ text: "true", style: "keyword" });
+    expect(result[2]).toContainEqual({ text: "false", style: "keyword" });
+    expect(result[3]).toContainEqual({ text: "2026-09-07T12:00:00Z", style: "keyword" });
+    expect(result[4]).toContainEqual({ text: '"""first line', style: "string" });
+    expect(result[5]).toEqual([{ text: '# still a string"""', style: "string" }]);
+    expect(result[6]).toEqual([{ text: "# back to a comment", style: "comment" }]);
+    expect(result[7]).toContainEqual({ text: "'local/path'", style: "string" });
+  });
+
   it("highlights JavaScript code with correct token styles", () => {
     const code = "const x = 42;";
     const result = highlightCode(code, "test.js");

@@ -1,6 +1,7 @@
 import { defineLanguageFacet, Language, StreamLanguage } from "@codemirror/language";
 import { dart } from "@codemirror/legacy-modes/mode/clike";
 import { swift } from "@codemirror/legacy-modes/mode/swift";
+import { toml } from "@codemirror/legacy-modes/mode/toml";
 import { parser as jsParser } from "@lezer/javascript";
 import { parser as jsonParser } from "@lezer/json";
 import { parser as cssParser } from "@lezer/css";
@@ -69,6 +70,8 @@ const languagesByExtension: Record<string, Language> = {
   // YAML
   yaml: language(yamlParser),
   yml: language(yamlParser),
+  // TOML
+  toml: StreamLanguage.define(toml),
   // Rust
   rs: language(rustParser),
   // Swift

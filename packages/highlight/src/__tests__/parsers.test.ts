@@ -15,6 +15,7 @@ describe("isLanguageSupported", () => {
     expect(isLanguageSupported("test.go")).toBe(true);
     expect(isLanguageSupported("test.rs")).toBe(true);
     expect(isLanguageSupported("test.json")).toBe(true);
+    expect(isLanguageSupported("pyproject.toml")).toBe(true);
     expect(isLanguageSupported("test.css")).toBe(true);
     expect(isLanguageSupported("test.html")).toBe(true);
     expect(isLanguageSupported("test.java")).toBe(true);
@@ -65,6 +66,7 @@ describe("getSupportedExtensions", () => {
     expect(extensions).toContain("cs");
     expect(extensions).toContain("nix");
     expect(extensions).toContain("json");
+    expect(extensions).toContain("toml");
     expect(extensions).toContain("svelte");
     expect(extensions).toContain("astro");
   });
