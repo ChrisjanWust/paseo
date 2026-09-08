@@ -169,6 +169,83 @@ const title = "Hello";
     expect(stringToken?.style).toBe("string");
   });
 
+  it("highlights Shell code", () => {
+    const code = 'if true; then echo "hello"; fi';
+    const result = highlightCode(code, "test.sh");
+
+    const keywordToken = result[0].find((t) => t.text === "if");
+    expect(keywordToken?.style).toBe("keyword");
+
+    const stringToken = result[0].find((t) => t.text.includes("hello"));
+    expect(stringToken?.style).toBe("string");
+  });
+
+  it("highlights SQL code", () => {
+    const code = "SELECT 'hello';";
+    const result = highlightCode(code, "test.sql");
+
+    const keywordToken = result[0].find((t) => t.text === "SELECT");
+    expect(keywordToken?.style).toBe("keyword");
+
+    const stringToken = result[0].find((t) => t.text.includes("hello"));
+    expect(stringToken?.style).toBe("string");
+  });
+
+  it("highlights Ruby code", () => {
+    const code = 'puts "hello" if true';
+    const result = highlightCode(code, "test.rb");
+
+    const keywordToken = result[0].find((t) => t.text === "if");
+    expect(keywordToken?.style).toBe("keyword");
+
+    const stringToken = result[0].find((t) => t.text.includes("hello"));
+    expect(stringToken?.style).toBe("string");
+  });
+
+  it("highlights Kotlin code", () => {
+    const code = 'val message = "hello"';
+    const result = highlightCode(code, "test.kt");
+
+    const keywordToken = result[0].find((t) => t.text === "val");
+    expect(keywordToken?.style).toBe("keyword");
+
+    const stringToken = result[0].find((t) => t.text.includes("hello"));
+    expect(stringToken?.style).toBe("string");
+  });
+
+  it("highlights PowerShell code", () => {
+    const code = 'if ($true) { Write-Output "hello" }';
+    const result = highlightCode(code, "test.ps1");
+
+    const keywordToken = result[0].find((t) => t.text === "if");
+    expect(keywordToken?.style).toBe("keyword");
+
+    const stringToken = result[0].find((t) => t.text.includes("hello"));
+    expect(stringToken?.style).toBe("string");
+  });
+
+  it("highlights Lua code", () => {
+    const code = 'local message = "hello"';
+    const result = highlightCode(code, "test.lua");
+
+    const keywordToken = result[0].find((t) => t.text === "local");
+    expect(keywordToken?.style).toBe("keyword");
+
+    const stringToken = result[0].find((t) => t.text.includes("hello"));
+    expect(stringToken?.style).toBe("string");
+  });
+
+  it("highlights Protocol Buffers code", () => {
+    const code = 'syntax = "proto3";';
+    const result = highlightCode(code, "test.proto");
+
+    const keywordToken = result[0].find((t) => t.text === "syntax");
+    expect(keywordToken?.style).toBe("keyword");
+
+    const stringToken = result[0].find((t) => t.text.includes("proto3"));
+    expect(stringToken?.style).toBe("string");
+  });
+
   it("returns unhighlighted tokens for unsupported extensions", () => {
     const code = "hello world\nsecond line";
     const result = highlightCode(code, "test.xyz");
