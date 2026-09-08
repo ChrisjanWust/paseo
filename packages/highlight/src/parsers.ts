@@ -1,6 +1,13 @@
 import { defineLanguageFacet, Language, StreamLanguage } from "@codemirror/language";
-import { dart } from "@codemirror/legacy-modes/mode/clike";
+import { dart, kotlin } from "@codemirror/legacy-modes/mode/clike";
 import { swift } from "@codemirror/legacy-modes/mode/swift";
+import { toml } from "@codemirror/legacy-modes/mode/toml";
+import { protobuf } from "@codemirror/legacy-modes/mode/protobuf";
+import { lua } from "@codemirror/legacy-modes/mode/lua";
+import { powerShell } from "@codemirror/legacy-modes/mode/powershell";
+import { ruby } from "@codemirror/legacy-modes/mode/ruby";
+import { standardSQL } from "@codemirror/legacy-modes/mode/sql";
+import { shell } from "@codemirror/legacy-modes/mode/shell";
 import { parser as jsParser } from "@lezer/javascript";
 import { parser as jsonParser } from "@lezer/json";
 import { parser as cssParser } from "@lezer/css";
@@ -69,6 +76,8 @@ const languagesByExtension: Record<string, Language> = {
   // YAML
   yaml: language(yamlParser),
   yml: language(yamlParser),
+  // TOML
+  toml: StreamLanguage.define(toml),
   // Rust
   rs: language(rustParser),
   // Swift
@@ -82,6 +91,24 @@ const languagesByExtension: Record<string, Language> = {
   // Elixir
   ex: language(elixirParser),
   exs: language(elixirParser),
+  // Shell
+  sh: StreamLanguage.define(shell),
+  bash: StreamLanguage.define(shell),
+  zsh: StreamLanguage.define(shell),
+  // SQL
+  sql: StreamLanguage.define(standardSQL),
+  // Ruby
+  rb: StreamLanguage.define(ruby),
+  // Kotlin
+  kt: StreamLanguage.define(kotlin),
+  kts: StreamLanguage.define(kotlin),
+  // PowerShell
+  ps1: StreamLanguage.define(powerShell),
+  psm1: StreamLanguage.define(powerShell),
+  // Lua
+  lua: StreamLanguage.define(lua),
+  // Protocol Buffers
+  proto: StreamLanguage.define(protobuf),
   // Markdown
   md: language(markdownParser),
   mdx: language(markdownParser),

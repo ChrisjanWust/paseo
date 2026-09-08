@@ -15,6 +15,7 @@ describe("isLanguageSupported", () => {
     expect(isLanguageSupported("test.go")).toBe(true);
     expect(isLanguageSupported("test.rs")).toBe(true);
     expect(isLanguageSupported("test.json")).toBe(true);
+    expect(isLanguageSupported("pyproject.toml")).toBe(true);
     expect(isLanguageSupported("test.css")).toBe(true);
     expect(isLanguageSupported("test.html")).toBe(true);
     expect(isLanguageSupported("test.java")).toBe(true);
@@ -25,6 +26,17 @@ describe("isLanguageSupported", () => {
     expect(isLanguageSupported("test.ex")).toBe(true);
     expect(isLanguageSupported("Counter.svelte")).toBe(true);
     expect(isLanguageSupported("Page.astro")).toBe(true);
+    expect(isLanguageSupported("test.sh")).toBe(true);
+    expect(isLanguageSupported("test.bash")).toBe(true);
+    expect(isLanguageSupported("test.zsh")).toBe(true);
+    expect(isLanguageSupported("test.sql")).toBe(true);
+    expect(isLanguageSupported("test.rb")).toBe(true);
+    expect(isLanguageSupported("test.kt")).toBe(true);
+    expect(isLanguageSupported("test.kts")).toBe(true);
+    expect(isLanguageSupported("test.ps1")).toBe(true);
+    expect(isLanguageSupported("test.psm1")).toBe(true);
+    expect(isLanguageSupported("test.lua")).toBe(true);
+    expect(isLanguageSupported("test.proto")).toBe(true);
   });
 
   it("returns false for unsupported file extensions", () => {
@@ -65,8 +77,20 @@ describe("getSupportedExtensions", () => {
     expect(extensions).toContain("cs");
     expect(extensions).toContain("nix");
     expect(extensions).toContain("json");
+    expect(extensions).toContain("toml");
     expect(extensions).toContain("svelte");
     expect(extensions).toContain("astro");
+    expect(extensions).toContain("sh");
+    expect(extensions).toContain("bash");
+    expect(extensions).toContain("zsh");
+    expect(extensions).toContain("sql");
+    expect(extensions).toContain("rb");
+    expect(extensions).toContain("kt");
+    expect(extensions).toContain("kts");
+    expect(extensions).toContain("ps1");
+    expect(extensions).toContain("psm1");
+    expect(extensions).toContain("lua");
+    expect(extensions).toContain("proto");
   });
 });
 
