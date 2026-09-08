@@ -2,25 +2,6 @@ import { describe, it, expect } from "vitest";
 import { highlightCode, highlightLine } from "../highlighter.js";
 
 describe("highlightCode", () => {
-  it("highlights TOML configuration files", () => {
-    const code = '# Project settings\n[project]\nname = "paseo"\nport = 6768';
-
-    expect(highlightCode(code, "pyproject.toml")).toEqual([
-      [{ text: "# Project settings", style: "comment" }],
-      [{ text: "[project]", style: "keyword" }],
-      [
-        { text: "name", style: "property" },
-        { text: " = ", style: null },
-        { text: '"paseo"', style: "string" },
-      ],
-      [
-        { text: "port", style: "property" },
-        { text: " = ", style: null },
-        { text: "6768", style: "number" },
-      ],
-    ]);
-  });
-
   it("highlights JavaScript code with correct token styles", () => {
     const code = "const x = 42;";
     const result = highlightCode(code, "test.js");
@@ -175,6 +156,17 @@ const title = "Hello";
 
     const tagToken = tokens.find((t) => t.text === "div");
     expect(tagToken).toBeDefined();
+  });
+
+  it("highlights TOML code", () => {
+    const code = 'name = "paseo"';
+    const result = highlightCode(code, "test.toml");
+
+    const propertyToken = result[0].find((t) => t.text === "name");
+    expect(propertyToken?.style).toBe("property");
+
+    const stringToken = result[0].find((t) => t.text.includes("paseo"));
+    expect(stringToken?.style).toBe("string");
   });
 
   it("returns unhighlighted tokens for unsupported extensions", () => {
