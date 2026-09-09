@@ -269,6 +269,25 @@ describe("ReplicaCache", () => {
     expect(restoredTimeline).toEqual(timeline());
   });
 
+  it("preserves schedule ownership when restoring cached workspaces", async () => {
+    const storage = new MemoryStorage();
+    const writer = createCache(storage);
+    const snapshot = directory();
+    snapshot.workspaces.set(
+      "workspace-1",
+      normalizeWorkspaceDescriptor({ ...workspacePayload(), scheduleId: "schedule-1" }),
+    );
+    commitDirectory(writer, SERVER_ID, snapshot);
+    await writer.flush();
+
+    const reader = createCache(storage);
+    const restored = await reader.readDirectory(SERVER_ID);
+    expect(restored.workspaces.get("workspace-1")?.scheduleId).toBe("schedule-1");
+    expect((await reader.readWorkspace(SERVER_ID, "workspace-1"))?.workspace.scheduleId).toBe(
+      "schedule-1",
+    );
+  });
+
   it("preserves pending timeline updates across directory baseline replacement", async () => {
     const storage = new MemoryStorage();
     const writer = createCache(storage);
