@@ -21,6 +21,8 @@ import {
   GitBranch,
   GitPullRequest,
   Globe,
+  GripVertical,
+  History,
   List,
   Server,
   Settings2,
@@ -50,6 +52,7 @@ import {
   hasActiveSidebarLabelFilter,
   SIDEBAR_UNLABELLED_LABEL_KEY,
   type SidebarGroupMode,
+  type SidebarProjectSortMode,
 } from "@/stores/sidebar-view-store";
 import { workspaceLabelKey, type WorkspaceLabelColor } from "@getpaseo/protocol/workspace-labels";
 import type { WorkspaceTitleSource } from "@/hooks/use-settings";
@@ -96,6 +99,12 @@ const GROUPING_ICONS: Record<SidebarGroupMode, OptionIcon> = {
   status: withUnistyles(CircleDashed),
 };
 
+// Manual is the drag order, so it wears the drag handle; recent wears the activity clock.
+const PROJECT_SORT_ICONS: Record<SidebarProjectSortMode, OptionIcon> = {
+  manual: withUnistyles(GripVertical),
+  recent: withUnistyles(History),
+};
+
 const TITLE_SOURCE_ICONS: Record<WorkspaceTitleSource, OptionIcon> = {
   title: withUnistyles(Type),
   branch: withUnistyles(GitBranch),
@@ -131,6 +140,7 @@ const TRAILING_ICONS: Record<SidebarTrailingChoice, OptionIcon> = {
 };
 
 const GROUPING_MODES: readonly SidebarGroupMode[] = ["project", "status"];
+const PROJECT_SORT_MODES: readonly SidebarProjectSortMode[] = ["manual", "recent"];
 const TITLE_SOURCES: readonly WorkspaceTitleSource[] = ["title", "branch"];
 const PROJECT_WORKSPACE_DISPLAYS: readonly SidebarProjectWorkspaceDisplay[] =
   SIDEBAR_PROJECT_WORKSPACE_DISPLAYS;
@@ -139,6 +149,11 @@ const TRAILING_CHOICES: readonly SidebarTrailingChoice[] = ["diff", "timestamp"]
 const GROUPING_LABEL_KEYS: Record<SidebarGroupMode, string> = {
   project: "sidebar.display.grouping.project",
   status: "sidebar.display.grouping.status",
+};
+
+const PROJECT_SORT_LABEL_KEYS: Record<SidebarProjectSortMode, string> = {
+  manual: "sidebar.display.projectSort.manual",
+  recent: "sidebar.display.projectSort.recent",
 };
 
 const TITLE_SOURCE_LABEL_KEYS: Record<WorkspaceTitleSource, string> = {
@@ -233,6 +248,20 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
             selectedValue={preferences.projectWorkspaceDisplay}
             onSelect={preferences.setProjectWorkspaceDisplay}
             testIDPrefix="sidebar-project-workspace-display"
+          />
+        ),
+      },
+      {
+        id: "projectSort",
+        title: t("sidebar.display.projectSort.label"),
+        content: (
+          <OptionList
+            values={PROJECT_SORT_MODES}
+            icons={PROJECT_SORT_ICONS}
+            labelKeys={PROJECT_SORT_LABEL_KEYS}
+            selectedValue={preferences.projectSort}
+            onSelect={preferences.setProjectSort}
+            testIDPrefix="sidebar-project-sort"
           />
         ),
       },
@@ -339,6 +368,16 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
           >
             {t("sidebar.display.grouping.label")}
           </MenuSubTrigger>
+          {/* Only project grouping renders project sections, so only it gets a sort row. */}
+          {preferences.grouping === "project" ? (
+            <MenuSubTrigger
+              id="projectSort"
+              value={t(PROJECT_SORT_LABEL_KEYS[preferences.projectSort])}
+              testID="sidebar-display-project-sort"
+            >
+              {t("sidebar.display.projectSort.label")}
+            </MenuSubTrigger>
+          ) : null}
           <MenuSubTrigger
             id="projectWorkspaces"
             value={t(PROJECT_WORKSPACE_DISPLAY_LABEL_KEYS[preferences.projectWorkspaceDisplay])}
