@@ -3,11 +3,17 @@ import { test, expect } from "../support/fixtures";
 import { gotoAppShell } from "../support/helpers/app";
 import {
   closeMobileAgentSidebar,
+  compactProjectWorkspaceTarget,
+  expectCompactProjectWorkspaceTargets,
+  expectCompactProjectWorkspaceTooltip,
   expectMobileAgentSidebarHidden,
   expectMobileAgentSidebarVisible,
+  expectSidebarWorkspaceRows,
   openMobileAgentSidebar,
   pinWorkspaceFromSidebar,
+  selectSidebarProjectWorkspaceDisplay,
 } from "../support/helpers/sidebar";
+import { seedCompactProjectWorkspaces } from "../support/helpers/sidebar-compact-workspaces";
 import { seedWorkspace } from "../support/helpers/seed-client";
 import { expectWorkspaceHeader } from "../support/helpers/workspace-ui";
 import { getServerId } from "../support/helpers/server-id";
@@ -115,6 +121,44 @@ test.describe("Sidebar workspace list", () => {
       await expect(projectRow).not.toContainText("test-owner/test-repo");
     } finally {
       await workspace.cleanup();
+    }
+  });
+
+  test("compact project rows expose workspace status targets without child rows", async ({
+    page,
+  }) => {
+    const project = await seedCompactProjectWorkspaces();
+
+    try {
+      await gotoAppShell(page);
+      await expectSidebarWorkspaceRows(page, project.workspaceIds);
+      await selectSidebarProjectWorkspaceDisplay(page, "compact");
+      await expectCompactProjectWorkspaceTargets(page, project);
+
+      await expectCompactProjectWorkspaceTooltip(page, {
+        projectViewKey: project.projectViewKey,
+        kind: "work",
+        title: "Compact target",
+      });
+      await expectCompactProjectWorkspaceTooltip(page, {
+        projectViewKey: project.projectViewKey,
+        kind: "schedule",
+        title: "Nightly sync",
+      });
+
+      await page.getByTestId(`sidebar-project-row-${project.projectViewKey}`).click();
+      await expectCompactProjectWorkspaceTargets(page, project);
+
+      await compactProjectWorkspaceTarget(page, project.projectViewKey, "work").click();
+      await expectWorkspaceHeader(page, {
+        title: "Compact target",
+        subtitle: path.basename(project.repoPath),
+      });
+
+      await page.reload();
+      await expectCompactProjectWorkspaceTargets(page, project);
+    } finally {
+      await project.cleanup();
     }
   });
 
