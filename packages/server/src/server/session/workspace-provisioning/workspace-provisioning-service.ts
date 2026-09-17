@@ -40,6 +40,7 @@ export interface ImportWorkspaceResult<T> {
 export interface CreateWorktreeWorkspaceInput {
   sourceCwd: string;
   projectId?: string;
+  workspaceId?: string;
   repoRoot: string;
   cwd: string;
   worktreeRoot: string;
@@ -62,7 +63,7 @@ export interface WorkspaceProvisioningService {
     cwd: string,
     title?: string | null,
     projectId?: string,
-    context?: { expectsInitialAgent?: boolean; scheduleId?: string },
+    context?: { expectsInitialAgent?: boolean; scheduleId?: string; workspaceId?: string },
   ): Promise<PersistedWorkspaceRecord>;
   createWorkspaceForWorktree(
     input: CreateWorktreeWorkspaceInput,
@@ -202,7 +203,7 @@ export function createWorkspaceProvisioningService(deps: {
     cwd: string,
     title?: string | null,
     projectId?: string,
-    context?: { expectsInitialAgent?: boolean; scheduleId?: string },
+    context?: { expectsInitialAgent?: boolean; scheduleId?: string; workspaceId?: string },
   ): Promise<PersistedWorkspaceRecord> {
     const normalizedCwd = resolve(cwd);
     const checkout = await workspaceGitService.getCheckout(normalizedCwd);
@@ -212,7 +213,7 @@ export function createWorkspaceProvisioningService(deps: {
         await findOrCreateProjectForDirectory(normalizedCwd);
     const timestamp = new Date().toISOString();
     const workspace = createPersistedWorkspaceRecord({
-      workspaceId: generateWorkspaceId(),
+      workspaceId: context?.workspaceId ?? generateWorkspaceId(),
       projectId: project.projectId,
       ...initialWorkspacePlacement({ source: "checkout", cwd: normalizedCwd, checkout }),
       title: title?.trim() || null,
@@ -239,7 +240,7 @@ export function createWorkspaceProvisioningService(deps: {
     });
     const timestamp = new Date().toISOString();
     const workspace = createPersistedWorkspaceRecord({
-      workspaceId: generateWorkspaceId(),
+      workspaceId: input.workspaceId ?? generateWorkspaceId(),
       projectId: project.projectId,
       ...initialWorkspacePlacement({
         source: "created_worktree",
