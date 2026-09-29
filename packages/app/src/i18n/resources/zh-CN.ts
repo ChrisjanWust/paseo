@@ -2202,7 +2202,7 @@ export const zhCN: TranslationResources = {
       accessibility: {
         title: "无障碍",
         colorblindMode: "色盲模式",
-        colorblindModeHint: "更强的差异高亮，删除的行比新增的行更深",
+        colorblindModeHint: "在差异、检查和状态中使用亮度也不同的鲜明绿色和红色",
       },
     },
     shortcuts: {

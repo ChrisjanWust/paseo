@@ -2268,7 +2268,8 @@ export const ru: TranslationResources = {
       accessibility: {
         title: "Специальные возможности",
         colorblindMode: "Режим для дальтоников",
-        colorblindModeHint: "Более яркая подсветка diff: удалённые строки темнее добавленных",
+        colorblindModeHint:
+          "Яркие зелёный и красный, различающиеся и по яркости, для diff, проверок и статусов",
       },
     },
     shortcuts: {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { darkHighlightColors, resolveSyntaxColors } from "@getpaseo/highlight";
-import { DEFAULT_UI_FONT_STACK, REGISTERED_THEMES } from "@/styles/theme";
+import { DEFAULT_UI_FONT_STACK, REGISTERED_THEMES, resolveStatusColors } from "@/styles/theme";
 import { hexColorWithAlpha } from "@/utils/color";
 import { applyAppearance, type AppearanceInput } from "./apply";
 
@@ -85,9 +85,9 @@ function makeInput(overrides: Partial<AppearanceInput> = {}): AppearanceInput {
 }
 
 // Run a single captured updater (default the first) against a fresh fake theme.
-function runCapturedUpdater(call = 0): FakeTheme {
+function runCapturedUpdater(call = 0, theme: FakeTheme = makeFakeTheme()): FakeTheme {
   const updater = updateTheme.mock.calls[call]?.[1] as unknown as ThemeUpdater;
-  return updater(makeFakeTheme());
+  return updater(theme);
 }
 
 describe("applyAppearance", () => {
@@ -209,16 +209,37 @@ describe("applyAppearance", () => {
     applyAppearance(makeInput());
 
     const { colors } = runCapturedUpdater();
-    expect(colors.diffAdditionBackground).toBe(hexColorWithAlpha("#3e704a", 0.15));
-    expect(colors.diffDeletionBackground).toBe(hexColorWithAlpha("#9d433b", 0.1));
+    expect(colors.diffAdditionBackground).toBe(hexColorWithAlpha("#6cb17b", 0.15));
+    expect(colors.diffDeletionBackground).toBe(hexColorWithAlpha("#d8847b", 0.1));
   });
 
-  it("raises diff row opacities in colorblind mode, removed above added", () => {
+  it("uses the scheme's vivid status colors in colorblind mode", () => {
+    applyAppearance(makeInput({ colorblindMode: true }));
+    const dark = runCapturedUpdater();
+    expect(dark.colors.statusSuccess).toBe("#1aff1a");
+    expect(dark.colors.statusDanger).toBe("#ff5c5c");
+
+    const light = runCapturedUpdater(0, { ...makeFakeTheme(), colorScheme: "light" });
+    expect(light.colors.statusSuccess).toBe("#00aa02");
+    expect(light.colors.statusDanger).toBe("#d50000");
+  });
+
+  it("restores the default status colors when colorblind mode is turned off", () => {
+    applyAppearance(makeInput({ colorblindMode: true }));
+    const patched = runCapturedUpdater();
+
+    updateTheme.mockClear();
+    applyAppearance(makeInput());
+    const { colors } = runCapturedUpdater(0, patched);
+    expect(colors).toMatchObject(resolveStatusColors("dark", false));
+  });
+
+  it("uses vivid green and red, with a stronger green, in colorblind mode", () => {
     applyAppearance(makeInput({ colorblindMode: true }));
 
     const { colors } = runCapturedUpdater();
-    expect(colors.diffAdditionBackground).toBe(hexColorWithAlpha("#3e704a", 0.17));
-    expect(colors.diffDeletionBackground).toBe(hexColorWithAlpha("#9d433b", 0.2));
+    expect(colors.diffAdditionBackground).toBe(hexColorWithAlpha("#1aff1a", 0.2));
+    expect(colors.diffDeletionBackground).toBe(hexColorWithAlpha("#d50000", 0.15));
   });
 
   it("resolves a syntax theme using the theme's own color scheme", () => {

@@ -68,12 +68,12 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.foregroundMuted,
   },
   pillTextSuccess: {
-    color: theme.colors.statusSuccess,
+    color: theme.colors.statusSuccessTintForeground,
   },
   pillTextWarning: {
-    color: theme.colors.statusWarning,
+    color: theme.colors.statusWarningTintForeground,
   },
   pillTextError: {
-    color: theme.colors.statusDanger,
+    color: theme.colors.statusDangerTintForeground,
   },
 }));

@@ -11,6 +11,10 @@ const testTheme = {
     statusSuccessTint: "#15803d1f",
     statusDangerTint: "#b91c1c1f",
     statusWarningTint: "#d977061f",
+    // Same rule as the real light theme: the status color capped at L=0.42.
+    statusSuccessTintForeground: "#005e28",
+    statusDangerTintForeground: "#950009",
+    statusWarningTintForeground: "#743c00",
     // The light band's values, so a test can name the colour it expects.
     statusDotSuccess: "#299f51",
     statusDotDanger: "#f12e2f",

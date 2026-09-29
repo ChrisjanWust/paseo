@@ -2286,7 +2286,7 @@ export const fr: TranslationResources = {
         title: "Accessibilité",
         colorblindMode: "Mode daltonien",
         colorblindModeHint:
-          "Surlignage des diffs renforcé, les lignes supprimées plus sombres que les lignes ajoutées",
+          "Vert et rouge vifs qui diffèrent aussi en luminosité, pour les diffs, les vérifications et les statuts",
       },
     },
     shortcuts: {

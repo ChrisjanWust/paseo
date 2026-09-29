@@ -2351,7 +2351,8 @@ export const en = {
       accessibility: {
         title: "Accessibility",
         colorblindMode: "Colorblind mode",
-        colorblindModeHint: "Stronger diff highlights, with removed lines darker than added ones",
+        colorblindModeHint:
+          "Vivid green and red that also differ in brightness, for diffs, checks and status",
       },
     },
     shortcuts: {
