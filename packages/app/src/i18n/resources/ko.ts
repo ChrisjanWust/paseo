@@ -1141,6 +1141,14 @@ export const ko: TranslationResources = {
         label: "프로젝트",
         all: "모든 프로젝트",
       },
+      recencyFilter: {
+        label: "최근성",
+        all: "전체 기간",
+        "6h": "최근 6시간",
+        "12h": "최근 12시간",
+        "1d": "최근 1일",
+        "7d": "최근 7일",
+      },
     },
     filterEmpty: {
       title: "일치하는 워크스페이스가 없습니다",

@@ -1147,6 +1147,14 @@ export const ja: TranslationResources = {
         label: "プロジェクト",
         all: "すべてのプロジェクト",
       },
+      recencyFilter: {
+        label: "最近の活動",
+        all: "すべての期間",
+        "6h": "過去6時間",
+        "12h": "過去12時間",
+        "1d": "過去1日",
+        "7d": "過去7日",
+      },
     },
     filterEmpty: {
       title: "一致するワークスペースがありません",

@@ -1151,6 +1151,14 @@ export const ru: TranslationResources = {
         label: "Проект",
         all: "Все проекты",
       },
+      recencyFilter: {
+        label: "Давность",
+        all: "За всё время",
+        "6h": "За 6 часов",
+        "12h": "За 12 часов",
+        "1d": "За день",
+        "7d": "За 7 дней",
+      },
     },
     filterEmpty: {
       title: "Нет подходящих рабочих пространств",

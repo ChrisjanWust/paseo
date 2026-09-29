@@ -1142,6 +1142,14 @@ export const en = {
         label: "Project",
         all: "All projects",
       },
+      recencyFilter: {
+        label: "Recency",
+        all: "All time",
+        "6h": "Past 6 hours",
+        "12h": "Past 12 hours",
+        "1d": "Past day",
+        "7d": "Past 7 days",
+      },
     },
     filterEmpty: {
       title: "No workspaces match",
