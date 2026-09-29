@@ -84,6 +84,8 @@ export interface AppSettings {
   contentFontSize: number; // clamped px, platform default 15 or 16
   codeFontSize: number; // clamped px, default 12
   syntaxTheme: SyntaxThemeId; // default "one"
+  /** Stronger diff row backgrounds, with removed rows darker than added ones. */
+  colorblindMode: boolean;
   workspaceTitleSource: WorkspaceTitleSource;
   sidebarWorkspaceTrailing: SidebarWorkspaceTrailing;
   sidebarProjectWorkspaceDisplay: SidebarProjectWorkspaceDisplay;
@@ -139,6 +141,7 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   contentFontSize: DEFAULT_CONTENT_FONT_SIZE,
   codeFontSize: DEFAULT_CODE_FONT_SIZE,
   syntaxTheme: "one",
+  colorblindMode: false,
   workspaceTitleSource: "title",
   sidebarWorkspaceTrailing: "diff",
   sidebarProjectWorkspaceDisplay: DEFAULT_SIDEBAR_PROJECT_WORKSPACE_DISPLAY,
@@ -226,6 +229,7 @@ const StoredAppSettingsSchema = z
       DEFAULT_CODE_FONT_SIZE,
     ),
     syntaxTheme: z.string().refine(isSyntaxThemeId).catch("one"),
+    colorblindMode: z.boolean().catch(false),
     workspaceTitleSource: z.enum(["title", "branch"]).catch("title"),
     sidebarWorkspaceTrailing: z.enum(["diff", "timestamp", "none"]).catch("diff"),
     sidebarProjectWorkspaceDisplay: z

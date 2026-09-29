@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { darkHighlightColors, resolveSyntaxColors } from "@getpaseo/highlight";
 import { DEFAULT_UI_FONT_STACK, REGISTERED_THEMES } from "@/styles/theme";
+import { hexColorWithAlpha } from "@/utils/color";
 import { applyAppearance, type AppearanceInput } from "./apply";
 
 // Override the global react-native-unistyles mock (vitest.setup.ts) so that
@@ -37,7 +38,14 @@ interface FakeTheme {
     "4xl": number;
   };
   lineHeight: { diff: number };
-  colors: { foreground: string; syntax: Record<string, string> };
+  colors: {
+    foreground: string;
+    statusSuccess: string;
+    statusDanger: string;
+    diffAdditionBackground?: string;
+    diffDeletionBackground?: string;
+    syntax: Record<string, string>;
+  };
 }
 
 function makeFakeTheme(): FakeTheme {
@@ -56,7 +64,7 @@ function makeFakeTheme(): FakeTheme {
       "4xl": 26,
     },
     lineHeight: { diff: 22 },
-    colors: { foreground: "#fff", syntax: {} },
+    colors: { foreground: "#fff", statusSuccess: "#3e704a", statusDanger: "#9d433b", syntax: {} },
   };
 }
 
@@ -68,6 +76,7 @@ function makeInput(overrides: Partial<AppearanceInput> = {}): AppearanceInput {
     contentFontSize: 15,
     codeFontSize: 12,
     syntaxTheme: "one",
+    colorblindMode: false,
     ...overrides,
   };
 }
@@ -185,6 +194,22 @@ describe("applyAppearance", () => {
 
     const { colors } = runCapturedUpdater();
     expect(colors.syntax).toEqual(resolveSyntaxColors("dracula", "dark"));
+  });
+
+  it("tints diff rows at the default opacities", () => {
+    applyAppearance(makeInput());
+
+    const { colors } = runCapturedUpdater();
+    expect(colors.diffAdditionBackground).toBe(hexColorWithAlpha("#3e704a", 0.15));
+    expect(colors.diffDeletionBackground).toBe(hexColorWithAlpha("#9d433b", 0.1));
+  });
+
+  it("raises diff row opacities in colorblind mode, removed above added", () => {
+    applyAppearance(makeInput({ colorblindMode: true }));
+
+    const { colors } = runCapturedUpdater();
+    expect(colors.diffAdditionBackground).toBe(hexColorWithAlpha("#3e704a", 0.17));
+    expect(colors.diffDeletionBackground).toBe(hexColorWithAlpha("#9d433b", 0.2));
   });
 
   it("resolves a syntax theme using the theme's own color scheme", () => {

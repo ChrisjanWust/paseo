@@ -2208,6 +2208,11 @@ export const ar: TranslationResources = {
           "معاينة مباشرة لطباعة المحتوى وموضوع بناء الجملة وخط التعليمات البرمجية",
         previewContent: "معاينة المحتوى والرمز",
       },
+      accessibility: {
+        title: "إمكانية الوصول",
+        colorblindMode: "وضع عمى الألوان",
+        colorblindModeHint: "إبراز أقوى للفروقات، مع أسطر محذوفة أغمق من الأسطر المضافة",
+      },
     },
     shortcuts: {
       dialogTitle: "الاختصارات",

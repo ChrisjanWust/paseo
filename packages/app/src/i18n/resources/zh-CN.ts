@@ -2182,6 +2182,11 @@ export const zhCN: TranslationResources = {
         previewAccessibility: "内容排版、语法主题和代码字体的实时预览",
         previewContent: "内容和代码预览",
       },
+      accessibility: {
+        title: "无障碍",
+        colorblindMode: "色盲模式",
+        colorblindModeHint: "更强的差异高亮，删除的行比新增的行更深",
+      },
     },
     shortcuts: {
       dialogTitle: "快捷键",
