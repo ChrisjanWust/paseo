@@ -20,6 +20,7 @@ export interface AppearanceInput {
   uiBaseFontSize: number; // already clamped
   contentFontSize: number; // already clamped
   codeFontSize: number; // already clamped
+  contentMaxWidth: number; // already clamped, default resolved
   syntaxTheme: SyntaxThemeId;
   colorblindMode: boolean;
 }
@@ -59,7 +60,7 @@ function scaleFontSize(
  * always current and makes ordering vs `setTheme`/`setAdaptiveThemes` irrelevant.
  *
  * The updater preserves the active theme wholesale (surfaces, accents,
- * terminal) and only patches the font ramp, syntax palette, and diff row backgrounds.
+ * terminal) and only patches the font ramp, content width, syntax palette, and diff row backgrounds.
  * `updateTheme` replaces the stored theme rather than merging, so we spread
  * `...t` first.
  */
@@ -93,6 +94,7 @@ export function applyAppearance(input: AppearanceInput): void {
           fontFamily,
           fontSize,
           lineHeight,
+          contentMaxWidth: input.contentMaxWidth,
           colors: {
             ...t.colors,
             syntax: resolveSyntaxColors(input.syntaxTheme, t.colorScheme),
@@ -105,6 +107,7 @@ export function applyAppearance(input: AppearanceInput): void {
         fontFamily,
         fontSize,
         lineHeight,
+        contentMaxWidth: input.contentMaxWidth,
         colors: {
           ...t.colors,
           syntax: resolveSyntaxColors(input.syntaxTheme, t.colorScheme),
