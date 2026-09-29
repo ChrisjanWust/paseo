@@ -1127,6 +1127,11 @@ export const ptBR: TranslationResources = {
         manual: "Manual",
         recent: "Atividade recente",
       },
+      workspaceSort: {
+        label: "Ordenar espaços de trabalho",
+        manual: "Manual",
+        recent: "Atividade recente",
+      },
       titleSource: {
         label: "Título",
         title: "Título",

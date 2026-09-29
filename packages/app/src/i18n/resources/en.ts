@@ -1109,6 +1109,11 @@ export const en = {
         manual: "Manual",
         recent: "Recent activity",
       },
+      workspaceSort: {
+        label: "Sort workspaces",
+        manual: "Manual",
+        recent: "Recent activity",
+      },
       titleSource: {
         label: "Title",
         title: "Title",

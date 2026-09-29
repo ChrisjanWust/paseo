@@ -1137,6 +1137,11 @@ export const es: TranslationResources = {
         manual: "Manual",
         recent: "Actividad reciente",
       },
+      workspaceSort: {
+        label: "Ordenar espacios de trabajo",
+        manual: "Manual",
+        recent: "Actividad reciente",
+      },
       titleSource: {
         label: "Título",
         title: "Título",

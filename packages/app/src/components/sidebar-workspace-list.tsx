@@ -2400,6 +2400,10 @@ function ProjectModeList({
 
   const handleWorkspaceReorder = useCallback(
     (projectViewKey: string, reorderedWorkspaces: SidebarWorkspacePlacement[]) => {
+      // Same reasoning as the project drag: a recency-sorted drop says nothing about manual order.
+      if (useSidebarViewStore.getState().workspaceSort === "recent") {
+        return;
+      }
       const reorderedWorkspaceKeys = reorderedWorkspaces.map((workspace) => workspace.workspaceKey);
       const currentWorkspaceOrder = getWorkspaceOrder(projectViewKey);
       if (

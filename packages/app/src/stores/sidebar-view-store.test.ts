@@ -86,6 +86,7 @@ describe("sidebar view store", () => {
     ).toEqual({
       groupMode: "status",
       projectSort: "manual",
+      workspaceSort: "manual",
       hostFilters: [],
       projectFilters: [],
       labelFilter: { labels: [] },
@@ -101,6 +102,7 @@ describe("sidebar view store", () => {
     ).toEqual({
       groupMode: "status",
       projectSort: "manual",
+      workspaceSort: "manual",
       hostFilters: ["host-a"],
       projectFilters: [],
       labelFilter: { labels: [] },
@@ -116,6 +118,7 @@ describe("sidebar view store", () => {
     ).toEqual({
       groupMode: "status",
       projectSort: "manual",
+      workspaceSort: "manual",
       hostFilters: ["host-a", "host-b"],
       projectFilters: [],
       labelFilter: { labels: [] },
@@ -227,8 +230,20 @@ describe("sidebar view store", () => {
     ).toEqual({
       groupMode: "project",
       projectSort: "manual",
+      workspaceSort: "manual",
       hostFilters: ["host-a"],
       projectFilters: ["project-a", "project-b"],
+      labelFilter: { labels: [] },
+    });
+  });
+
+  it("carries a persisted workspace sort through the version migration", () => {
+    expect(migrateSidebarViewState({ groupMode: "project", workspaceSort: "recent" })).toEqual({
+      groupMode: "project",
+      projectSort: "manual",
+      workspaceSort: "recent",
+      hostFilters: [],
+      projectFilters: [],
       labelFilter: { labels: [] },
     });
   });
@@ -237,6 +252,7 @@ describe("sidebar view store", () => {
     expect(migrateSidebarViewState({ projectFilters: "project-a" })).toEqual({
       groupMode: "project",
       projectSort: "manual",
+      workspaceSort: "manual",
       hostFilters: [],
       projectFilters: [],
       labelFilter: { labels: [] },
