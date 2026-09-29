@@ -1133,6 +1133,14 @@ export const zhCN: TranslationResources = {
         label: "项目",
         all: "所有项目",
       },
+      recencyFilter: {
+        label: "最近活动",
+        all: "全部时间",
+        "6h": "过去 6 小时",
+        "12h": "过去 12 小时",
+        "1d": "过去 1 天",
+        "7d": "过去 7 天",
+      },
     },
     filterEmpty: {
       title: "没有匹配的工作区",

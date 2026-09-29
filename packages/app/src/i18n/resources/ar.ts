@@ -1141,6 +1141,14 @@ export const ar: TranslationResources = {
         label: "المشروع",
         all: "كل المشاريع",
       },
+      recencyFilter: {
+        label: "الحداثة",
+        all: "كل الأوقات",
+        "6h": "آخر 6 ساعات",
+        "12h": "آخر 12 ساعة",
+        "1d": "آخر يوم",
+        "7d": "آخر 7 أيام",
+      },
     },
     filterEmpty: {
       title: "لا توجد مساحات عمل مطابقة",

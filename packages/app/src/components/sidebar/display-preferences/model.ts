@@ -7,6 +7,7 @@ import {
 } from "@/hooks/use-settings";
 import {
   useSidebarViewStore,
+  type SidebarRecencyWindow,
   type SidebarGroupMode,
   type SidebarLabelFilter,
   type SidebarProjectSortMode,
@@ -46,6 +47,8 @@ export interface SidebarDisplayPreferences {
   labelFilter: SidebarLabelFilter;
   toggleLabelFilter: (name: string) => void;
   clearLabelFilter: () => void;
+  recencyWindow: SidebarRecencyWindow;
+  setRecencyWindow: (window: SidebarRecencyWindow) => void;
 }
 
 /**
@@ -72,6 +75,8 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
   const labelFilter = useSidebarViewStore((state) => state.labelFilter);
   const toggleLabelFilter = useSidebarViewStore((state) => state.toggleLabelFilter);
   const clearLabelFilter = useSidebarViewStore((state) => state.clearLabelFilter);
+  const recencyWindow = useSidebarViewStore((state) => state.recencyWindow);
+  const setRecencyWindow = useSidebarViewStore((state) => state.setRecencyWindow);
 
   const {
     settings: {
@@ -150,6 +155,8 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
       labelFilter,
       toggleLabelFilter,
       clearLabelFilter,
+      recencyWindow,
+      setRecencyWindow,
     }),
     [
       grouping,
@@ -177,6 +184,8 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
       labelFilter,
       toggleLabelFilter,
       clearLabelFilter,
+      recencyWindow,
+      setRecencyWindow,
     ],
   );
 }

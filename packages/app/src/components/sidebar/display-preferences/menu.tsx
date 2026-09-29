@@ -15,6 +15,7 @@ import {
   CircleCheck,
   CircleDashed,
   Clock,
+  Infinity as InfinityIcon,
   Diff,
   EyeOff,
   Folder,
@@ -50,7 +51,9 @@ import type { SidebarProjectEntry } from "@/hooks/use-sidebar-workspaces-list";
 import type { Theme } from "@/styles/theme";
 import {
   hasActiveSidebarLabelFilter,
+  SIDEBAR_RECENCY_WINDOWS,
   SIDEBAR_UNLABELLED_LABEL_KEY,
+  type SidebarRecencyWindow,
   type SidebarGroupMode,
   type SidebarProjectSortMode,
   type SidebarWorkspaceSortMode,
@@ -59,6 +62,7 @@ import { workspaceLabelKey, type WorkspaceLabelColor } from "@getpaseo/protocol/
 import type { WorkspaceTitleSource } from "@/hooks/use-settings";
 import { SIDEBAR_CHECKS_DISPLAYS, type SidebarChecksDisplay } from "./checks-display";
 import { useSidebarDisplayPreferences, type SidebarTrailingChoice } from "./model";
+import { hasActiveSidebarRecencyWindow } from "../sidebar-recency-filter";
 import { SIDEBAR_ROW_ITEMS, type SidebarRowItem } from "./row-items";
 import {
   SIDEBAR_PROJECT_WORKSPACE_DISPLAYS,
@@ -143,6 +147,17 @@ const TRAILING_ICONS: Record<SidebarTrailingChoice, OptionIcon> = {
   timestamp: withUnistyles(Clock),
 };
 
+// Every bounded window is the same kind of answer, so they share the clock; "all time" is the one
+// that is not a window at all.
+const ThemedClock = withUnistyles(Clock);
+const RECENCY_WINDOW_ICONS: Record<SidebarRecencyWindow, OptionIcon> = {
+  all: withUnistyles(InfinityIcon),
+  "6h": ThemedClock,
+  "12h": ThemedClock,
+  "1d": ThemedClock,
+  "7d": ThemedClock,
+};
+
 const GROUPING_MODES: readonly SidebarGroupMode[] = ["project", "status"];
 const PROJECT_SORT_MODES: readonly SidebarProjectSortMode[] = ["manual", "recent"];
 const WORKSPACE_SORT_MODES: readonly SidebarWorkspaceSortMode[] = ["manual", "recent"];
@@ -174,6 +189,14 @@ const TITLE_SOURCE_LABEL_KEYS: Record<WorkspaceTitleSource, string> = {
 const PROJECT_WORKSPACE_DISPLAY_LABEL_KEYS: Record<SidebarProjectWorkspaceDisplay, string> = {
   rows: "sidebar.display.projectWorkspaces.rows",
   compact: "sidebar.display.projectWorkspaces.compact",
+};
+
+const RECENCY_WINDOW_LABEL_KEYS: Record<SidebarRecencyWindow, string> = {
+  all: "sidebar.display.recencyFilter.all",
+  "6h": "sidebar.display.recencyFilter.6h",
+  "12h": "sidebar.display.recencyFilter.12h",
+  "1d": "sidebar.display.recencyFilter.1d",
+  "7d": "sidebar.display.recencyFilter.7d",
 };
 
 const ROW_ITEM_LABEL_KEYS: Record<SidebarRowItem, string> = {
@@ -324,6 +347,20 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
       },
     ];
 
+    definitions.push({
+      id: "recencyFilter",
+      title: t("sidebar.display.recencyFilter.label"),
+      content: (
+        <OptionList
+          values={SIDEBAR_RECENCY_WINDOWS}
+          icons={RECENCY_WINDOW_ICONS}
+          labelKeys={RECENCY_WINDOW_LABEL_KEYS}
+          selectedValue={preferences.recencyWindow}
+          onSelect={preferences.setRecencyWindow}
+          testIDPrefix="sidebar-recency-filter"
+        />
+      ),
+    });
     if (showHostFilter) {
       definitions.push({
         id: "hostFilter",
@@ -457,6 +494,17 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
               </MenuSubTrigger>
             </>
           ) : null}
+          {/* Host and Project are the block's other rows when they show; on their own this one
+            opens the block, so it carries the separator. */}
+          {showHostFilter || showProjectFilter ? null : <MenuSeparator />}
+          <MenuSubTrigger
+            id="recencyFilter"
+            value={t(RECENCY_WINDOW_LABEL_KEYS[preferences.recencyWindow])}
+            indicator={hasActiveSidebarRecencyWindow(preferences.recencyWindow)}
+            testID="sidebar-display-recency-filter"
+          >
+            {t("sidebar.display.recencyFilter.label")}
+          </MenuSubTrigger>
           {showLabelFilter ? (
             <>
               <MenuSeparator />

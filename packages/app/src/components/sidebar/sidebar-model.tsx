@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   useSidebarWorkspacesList,
   type SidebarProjectEntry,
@@ -15,6 +22,7 @@ import { useSidebarCollapsedSectionsStore } from "@/stores/sidebar-collapsed-sec
 import {
   hasActiveSidebarLabelFilter,
   useSidebarViewStore,
+  type SidebarRecencyWindow,
   type SidebarGroupMode,
 } from "@/stores/sidebar-view-store";
 import { useSidebarOrderStore } from "@/stores/sidebar-order-store";
@@ -23,6 +31,7 @@ import { buildSidebarProjection } from "./sidebar-projection";
 import type { SidebarProjectIconTarget } from "@/utils/sidebar-project-row-model";
 import { filterWorkspacesByLabels, type SidebarWorkspaceGroup } from "./sidebar-labels";
 import { filterWorkspacesByProjects, resolveActiveProjectFilters } from "./sidebar-project-filter";
+import { filterWorkspacesByRecency, hasActiveSidebarRecencyWindow } from "./sidebar-recency-filter";
 import {
   hasAuthoritativeWorkspaceLabelCatalog,
   useWorkspaceLabelProjection,
@@ -52,6 +61,24 @@ interface SidebarModel extends SidebarWorkspacesListResult {
 
 const SidebarModelContext = createContext<SidebarModel | null>(null);
 const EMPTY_COLLAPSED_PROJECT_KEYS = new Set<string>();
+const RECENCY_CLOCK_INTERVAL_MS = 60_000;
+
+/**
+ * The instant the recency window is measured back from. It only ticks while a window is set, and
+ * only once a minute: the narrowest window is six hours, so a workspace ageing out up to a minute
+ * late is invisible, and a faster clock would rebuild the whole sidebar projection for nothing.
+ */
+function useRecencyWindowNow(recencyWindow: SidebarRecencyWindow): number {
+  const [now, setNow] = useState(() => Date.now());
+  const active = hasActiveSidebarRecencyWindow(recencyWindow);
+  useEffect(() => {
+    if (!active) return;
+    setNow(Date.now());
+    const interval = setInterval(() => setNow(Date.now()), RECENCY_CLOCK_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [active, recencyWindow]);
+  return now;
+}
 
 export function SidebarModelProvider({
   active,
@@ -69,6 +96,9 @@ export function SidebarModelProvider({
   const workspaceSort = useSidebarViewStore((state) => state.workspaceSort);
   const labelFilter = useSidebarViewStore((state) => state.labelFilter);
   const projectFilters = useSidebarViewStore((state) => state.projectFilters);
+  const recencyWindow = useSidebarViewStore((state) => state.recencyWindow);
+  const recencyNow = useRecencyWindowNow(recencyWindow);
+  const hasActiveRecencyWindow = hasActiveSidebarRecencyWindow(recencyWindow);
   const reconcileLabelFilter = useSidebarViewStore((state) => state.reconcileLabelFilter);
   const { hosts: labelHosts } = useWorkspaceLabelProjection();
   const collapsedProjectKeys = useSidebarCollapsedSectionsStore(
@@ -106,10 +136,12 @@ export function SidebarModelProvider({
   // anything; the label filter reads `labels`, which only exists on an entry. Hydration opens a
   // live session-store subscription over every workspace on every visible host, so widening this
   // for a filter that does not need it costs a retained-but-inactive sidebar real work.
-  // The recent sorts read `statusEnteredAt`, which only exists on a hydrated entry.
+  // The recent sorts and the recency window read `statusEnteredAt`, which only exists on a
+  // hydrated entry.
   const needsWorkspaceEntries =
     groupMode !== "project" ||
     hasActiveLabelFilter ||
+    hasActiveRecencyWindow ||
     projectSort === "recent" ||
     workspaceSort === "recent";
   const workspaceEntriesByKey = useSidebarWorkspaceEntries(
@@ -121,9 +153,14 @@ export function SidebarModelProvider({
       workspaces: [...workspaceEntriesByKey.values()],
       projectFilters: resolvedProjectFilters,
     });
-    const filtered = filterWorkspacesByLabels({ workspaces: byProject, ...labelFilter });
+    const byLabel = filterWorkspacesByLabels({ workspaces: byProject, ...labelFilter });
+    const filtered = filterWorkspacesByRecency({
+      workspaces: byLabel,
+      recencyWindow,
+      now: recencyNow,
+    });
     return new Map(filtered.map((workspace) => [workspace.workspaceKey, workspace]));
-  }, [labelFilter, resolvedProjectFilters, workspaceEntriesByKey]);
+  }, [recencyNow, recencyWindow, labelFilter, resolvedProjectFilters, workspaceEntriesByKey]);
   const visibleWorkspaceKeys = useMemo(
     () => new Set(filteredWorkspaceEntriesByKey.keys()),
     [filteredWorkspaceEntriesByKey],
@@ -131,14 +168,15 @@ export function SidebarModelProvider({
   // The two filters prune differently on purpose. The project filter is a membership test on the
   // project itself, so a project you filtered TO survives even with no workspaces — it still owns
   // a header row you can create your first workspace under. The label filter can only ask about
-  // workspaces, so a project it empties has nothing left to show.
+  // workspaces, so a project it empties has nothing left to show. The recency window is the same
+  // kind of question as the label filter and prunes the same way.
   const filteredProjects = useMemo(() => {
     let projects = list.projects;
     if (hasActiveProjectFilter) {
       const included = new Set(resolvedProjectFilters);
       projects = projects.filter((project) => included.has(project.viewKey));
     }
-    if (hasActiveLabelFilter) {
+    if (hasActiveLabelFilter || hasActiveRecencyWindow) {
       projects = projects.flatMap((project) => {
         const workspaces = project.workspaces.filter((workspace) =>
           visibleWorkspaceKeys.has(workspace.workspaceKey),
@@ -148,6 +186,7 @@ export function SidebarModelProvider({
     }
     return projects;
   }, [
+    hasActiveRecencyWindow,
     hasActiveLabelFilter,
     hasActiveProjectFilter,
     resolvedProjectFilters,

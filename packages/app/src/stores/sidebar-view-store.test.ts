@@ -90,6 +90,7 @@ describe("sidebar view store", () => {
       hostFilters: [],
       projectFilters: [],
       labelFilter: { labels: [] },
+      recencyWindow: "all",
     });
   });
 
@@ -106,6 +107,7 @@ describe("sidebar view store", () => {
       hostFilters: ["host-a"],
       projectFilters: [],
       labelFilter: { labels: [] },
+      recencyWindow: "all",
     });
   });
 
@@ -122,6 +124,7 @@ describe("sidebar view store", () => {
       hostFilters: ["host-a", "host-b"],
       projectFilters: [],
       labelFilter: { labels: [] },
+      recencyWindow: "all",
     });
   });
 
@@ -234,6 +237,7 @@ describe("sidebar view store", () => {
       hostFilters: ["host-a"],
       projectFilters: ["project-a", "project-b"],
       labelFilter: { labels: [] },
+      recencyWindow: "all",
     });
   });
 
@@ -245,6 +249,7 @@ describe("sidebar view store", () => {
       hostFilters: [],
       projectFilters: [],
       labelFilter: { labels: [] },
+      recencyWindow: "all",
     });
   });
 
@@ -256,6 +261,19 @@ describe("sidebar view store", () => {
       hostFilters: [],
       projectFilters: [],
       labelFilter: { labels: [] },
+      recencyWindow: "all",
+    });
+  });
+
+  it("carries a persisted recency window through the version migration", () => {
+    expect(migrateSidebarViewState({ groupMode: "project", recencyWindow: "12h" })).toEqual({
+      groupMode: "project",
+      projectSort: "manual",
+      workspaceSort: "manual",
+      hostFilters: [],
+      projectFilters: [],
+      labelFilter: { labels: [] },
+      recencyWindow: "12h",
     });
   });
 

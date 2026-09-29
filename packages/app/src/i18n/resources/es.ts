@@ -1177,6 +1177,14 @@ export const es: TranslationResources = {
         label: "Proyecto",
         all: "Todos los proyectos",
       },
+      recencyFilter: {
+        label: "Recencia",
+        all: "Todo",
+        "6h": "Últimas 6 horas",
+        "12h": "Últimas 12 horas",
+        "1d": "Último día",
+        "7d": "Últimos 7 días",
+      },
     },
     filterEmpty: {
       title: "Ningún espacio de trabajo coincide",

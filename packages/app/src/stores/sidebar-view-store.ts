@@ -19,6 +19,17 @@ export type SidebarProjectSortMode = "manual" | "recent";
  */
 export type SidebarWorkspaceSortMode = "manual" | "recent";
 
+/** How far back a workspace's last activity may be for the sidebar to show it. */
+export type SidebarRecencyWindow = "all" | "6h" | "12h" | "1d" | "7d";
+
+export const SIDEBAR_RECENCY_WINDOWS: readonly SidebarRecencyWindow[] = [
+  "all",
+  "6h",
+  "12h",
+  "1d",
+  "7d",
+];
+
 const SIDEBAR_VIEW_STORAGE_KEY = "sidebar-view";
 const LEGACY_SIDEBAR_GROUP_MODE_STORAGE_KEY = "sidebar-group-mode";
 const SIDEBAR_VIEW_STORE_VERSION = 6;
@@ -75,6 +86,7 @@ interface SidebarViewStoreState {
    */
   projectFilters: string[];
   labelFilter: SidebarLabelFilter;
+  recencyWindow: SidebarRecencyWindow;
   setGroupMode: (mode: SidebarGroupMode) => void;
   setProjectSort: (mode: SidebarProjectSortMode) => void;
   setWorkspaceSort: (mode: SidebarWorkspaceSortMode) => void;
@@ -86,6 +98,7 @@ interface SidebarViewStoreState {
   clearLabelFilter: () => void;
   reconcileLabelFilter: (labels: readonly string[]) => void;
   reconcileHostFilters: (serverIds: readonly string[]) => void;
+  setRecencyWindow: (window: SidebarRecencyWindow) => void;
 }
 
 interface SidebarViewPersistedState {
@@ -95,11 +108,13 @@ interface SidebarViewPersistedState {
   hostFilters: string[];
   projectFilters: string[];
   labelFilter: SidebarLabelFilter;
+  recencyWindow: SidebarRecencyWindow;
 }
 
 const PersistedSidebarGroupModeSchema = z.enum(["project", "status", "label"]);
 const PersistedSidebarProjectSortSchema = z.enum(["manual", "recent"]);
 const PersistedSidebarWorkspaceSortSchema = z.enum(["manual", "recent"]);
+const PersistedSidebarRecencyWindowSchema = z.enum(["all", "6h", "12h", "1d", "7d"]);
 const SidebarLabelFilterSchema = z.object({
   labels: z.array(z.string()),
 });
@@ -112,6 +127,7 @@ const SidebarViewPersistedStateSchema = z.strictObject({
   projectFilters: z.array(z.string()).optional(),
   groupModeByServerId: z.record(z.string(), PersistedSidebarGroupModeSchema).optional(),
   labelFilter: SidebarLabelFilterSchema.optional(),
+  recencyWindow: PersistedSidebarRecencyWindowSchema.optional(),
 });
 
 type SidebarViewStorageState = z.infer<typeof SidebarViewPersistedStateSchema>;
@@ -150,6 +166,7 @@ export function migrateSidebarViewState(persistedState: unknown): SidebarViewPer
       hostFilters: [],
       projectFilters: [],
       labelFilter: emptyLabelFilter(),
+      recencyWindow: "all",
     };
   }
   const state = result.data;
@@ -163,6 +180,7 @@ export function migrateSidebarViewState(persistedState: unknown): SidebarViewPer
       hostFilters: [],
       projectFilters: [],
       labelFilter: emptyLabelFilter(),
+      recencyWindow: "all",
     };
   }
 
@@ -175,6 +193,7 @@ export function migrateSidebarViewState(persistedState: unknown): SidebarViewPer
     labelFilter: state.labelFilter
       ? normalizeSidebarLabelFilter(state.labelFilter)
       : emptyLabelFilter(),
+    recencyWindow: state.recencyWindow ?? "all",
   };
 }
 
@@ -212,6 +231,7 @@ export const useSidebarViewStore = create<SidebarViewStoreState>()(
       hostFilters: [],
       projectFilters: [],
       labelFilter: emptyLabelFilter(),
+      recencyWindow: "all",
       setGroupMode: (mode) => set({ groupMode: mode }),
       setProjectSort: (mode) => set({ projectSort: mode }),
       setWorkspaceSort: (mode) => set({ workspaceSort: mode }),
@@ -251,6 +271,7 @@ export const useSidebarViewStore = create<SidebarViewStoreState>()(
           }
           return { hostFilters: next };
         }),
+      setRecencyWindow: (window) => set({ recencyWindow: window }),
     }),
     {
       name: SIDEBAR_VIEW_STORAGE_KEY,
@@ -266,6 +287,7 @@ export const useSidebarViewStore = create<SidebarViewStoreState>()(
         hostFilters: state.hostFilters,
         projectFilters: state.projectFilters,
         labelFilter: state.labelFilter,
+        recencyWindow: state.recencyWindow,
       }),
       migrate: migrateSidebarViewState,
     },
