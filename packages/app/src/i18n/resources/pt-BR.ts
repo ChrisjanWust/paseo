@@ -2243,6 +2243,12 @@ export const ptBR: TranslationResources = {
           "Prévia ao vivo da tipografia de conteúdo, do tema de sintaxe e da fonte de código",
         previewContent: "Prévia de conteúdo e código",
       },
+      accessibility: {
+        title: "Acessibilidade",
+        colorblindMode: "Modo daltônico",
+        colorblindModeHint:
+          "Destaques de diff mais fortes, com linhas removidas mais escuras que as adicionadas",
+      },
     },
     shortcuts: {
       dialogTitle: "Atalhos",

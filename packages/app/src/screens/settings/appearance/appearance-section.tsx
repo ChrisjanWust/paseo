@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { DropdownTrigger } from "@/components/ui/dropdown-trigger";
+import { Switch } from "@/components/ui/switch";
 import { SettingsSection } from "@/components/settings/headings/settings-section";
 import { useContributedThemes } from "@/appearance/provider";
 import { EditingTextInput as TextInput } from "@/components/ui/text-input";
@@ -447,6 +448,13 @@ export function AppearanceSection() {
     [updateSettings],
   );
 
+  const handleColorblindModeChange = useCallback(
+    (colorblindMode: boolean) => {
+      void updateSettings({ colorblindMode });
+    },
+    [updateSettings],
+  );
+
   const commitUiFontFamily = useCallback(
     (value: string) => {
       const sanitized = sanitizeFontFamily(value);
@@ -609,6 +617,26 @@ export function AppearanceSection() {
         </View>
         <View style={styles.preview}>
           <AppearancePreview overrides={previewOverrides} />
+        </View>
+      </SettingsSection>
+      <SettingsSection title={t("settings.appearance.accessibility.title")}>
+        <View style={settingsStyles.card}>
+          <View style={settingsStyles.row}>
+            <View style={settingsStyles.rowContent}>
+              <Text style={settingsStyles.rowTitle}>
+                {t("settings.appearance.accessibility.colorblindMode")}
+              </Text>
+              <Text style={settingsStyles.rowHint}>
+                {t("settings.appearance.accessibility.colorblindModeHint")}
+              </Text>
+            </View>
+            <Switch
+              value={settings.colorblindMode}
+              onValueChange={handleColorblindModeChange}
+              accessibilityLabel={t("settings.appearance.accessibility.colorblindMode")}
+              testID="colorblind-mode-toggle"
+            />
+          </View>
         </View>
       </SettingsSection>
     </View>

@@ -2330,6 +2330,11 @@ export const en = {
         previewAccessibility: "Live preview of content typography, syntax theme, and code font",
         previewContent: "Readable content and code preview",
       },
+      accessibility: {
+        title: "Accessibility",
+        colorblindMode: "Colorblind mode",
+        colorblindModeHint: "Stronger diff highlights, with removed lines darker than added ones",
+      },
     },
     shortcuts: {
       dialogTitle: "Shortcuts",

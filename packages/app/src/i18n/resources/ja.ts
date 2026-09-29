@@ -2228,6 +2228,11 @@ export const ja: TranslationResources = {
           "コンテンツの文字組み、構文ハイライトテーマ、コードフォントのライブプレビュー",
         previewContent: "コンテンツとコードのプレビュー",
       },
+      accessibility: {
+        title: "アクセシビリティ",
+        colorblindMode: "色覚サポートモード",
+        colorblindModeHint: "差分のハイライトを強くし、削除行を追加行より濃く表示します",
+      },
     },
     shortcuts: {
       dialogTitle: "ショートカット",

@@ -2218,6 +2218,12 @@ export const ko: TranslationResources = {
         previewAccessibility: "콘텐츠 타이포그래피, 구문 테마, 코드 글꼴의 실시간 미리보기",
         previewContent: "콘텐츠 및 코드 미리보기",
       },
+      accessibility: {
+        title: "접근성",
+        colorblindMode: "색각 이상 모드",
+        colorblindModeHint:
+          "diff 강조를 더 진하게 하고, 삭제된 줄을 추가된 줄보다 어둡게 표시합니다",
+      },
     },
     shortcuts: {
       dialogTitle: "단축키",

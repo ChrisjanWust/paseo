@@ -2265,6 +2265,12 @@ export const fr: TranslationResources = {
           "Aperçu en direct de la typographie du contenu, du thème de syntaxe et de la police de code",
         previewContent: "Aperçu du contenu et du code",
       },
+      accessibility: {
+        title: "Accessibilité",
+        colorblindMode: "Mode daltonien",
+        colorblindModeHint:
+          "Surlignage des diffs renforcé, les lignes supprimées plus sombres que les lignes ajoutées",
+      },
     },
     shortcuts: {
       dialogTitle: "Raccourcis",

@@ -1,5 +1,4 @@
 import type { Theme } from "@/styles/theme";
-import { hexColorWithAlpha } from "@/utils/color";
 import type { DiffCell, DiffPalette } from "./types";
 
 export function createDiffPalette(theme: Theme): DiffPalette {
@@ -11,8 +10,8 @@ export function createDiffPalette(theme: Theme): DiffPalette {
     foregroundMuted: theme.colors.foregroundMuted,
     addition: theme.colors.statusSuccess,
     deletion: theme.colors.statusDanger,
-    additionBackground: hexColorWithAlpha(theme.colors.statusSuccess, 0.15),
-    deletionBackground: hexColorWithAlpha(theme.colors.statusDanger, 0.1),
+    additionBackground: theme.colors.diffAdditionBackground,
+    deletionBackground: theme.colors.diffDeletionBackground,
     emptyBackground: theme.colors.surface0,
     selection: theme.colors.terminal.blue,
     headerActiveSurface: theme.colors.surface1,

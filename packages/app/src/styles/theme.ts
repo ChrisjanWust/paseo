@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import { darkHighlightColors, lightHighlightColors } from "@getpaseo/highlight";
+import { hexColorWithAlpha } from "@/utils/color";
 
 export const baseColors = {
   // Base colors
@@ -173,6 +174,31 @@ function statusTints(colors: typeof lightStatusColors, alphaHex: string) {
 const lightStatusTints = statusTints(lightStatusColors, "1f"); // 12%
 const darkStatusTints = statusTints(darkStatusColors, "29"); // 16%
 
+// Diff row backgrounds — the fill behind an added or removed line in a diff view. The status
+// color at low opacity, like the status tints above. The status pair shares one lightness, so
+// by default the two rows differ only in hue. Colorblind mode raises both and puts removed rows
+// above added ones, so the pair also differs in lightness.
+export interface DiffBackgroundAlpha {
+  addition: number;
+  deletion: number;
+}
+
+export const DEFAULT_DIFF_BACKGROUND_ALPHA: DiffBackgroundAlpha = { addition: 0.15, deletion: 0.1 };
+export const COLORBLIND_DIFF_BACKGROUND_ALPHA: DiffBackgroundAlpha = {
+  addition: 0.17,
+  deletion: 0.2,
+};
+
+export function diffBackgroundColors(
+  colors: { statusSuccess: string; statusDanger: string },
+  alpha: DiffBackgroundAlpha,
+) {
+  return {
+    diffAdditionBackground: hexColorWithAlpha(colors.statusSuccess, alpha.addition),
+    diffDeletionBackground: hexColorWithAlpha(colors.statusDanger, alpha.deletion),
+  };
+}
+
 // Status *dot* colors — the small filled discs on a sidebar row, and the glyphs that stand in
 // for them. Same four hues and the same generation rule as the status colors above, but its
 // own band, because a dot is doing a different job than a check icon or a host badge.
@@ -304,6 +330,7 @@ export function buildLightSemanticColors(tint: LightThemeConfig) {
     ...lightDiffColors,
     ...lightStatusColors,
     ...lightStatusTints,
+    ...diffBackgroundColors(lightStatusColors, DEFAULT_DIFF_BACKGROUND_ALPHA),
     ...lightStatusDotColors,
 
     terminal: {
@@ -436,6 +463,7 @@ export function buildDarkSemanticColors(tint: DarkThemeConfig) {
     ...darkDiffColors,
     ...darkStatusColors,
     ...darkStatusTints,
+    ...diffBackgroundColors(darkStatusColors, DEFAULT_DIFF_BACKGROUND_ALPHA),
     ...darkStatusDotColors,
 
     terminal: {

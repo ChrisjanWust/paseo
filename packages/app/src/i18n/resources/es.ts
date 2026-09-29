@@ -2262,6 +2262,12 @@ export const es: TranslationResources = {
           "Vista previa en vivo de la tipografía de contenido, el tema de sintaxis y la fuente del código",
         previewContent: "Vista previa de contenido y código",
       },
+      accessibility: {
+        title: "Accesibilidad",
+        colorblindMode: "Modo daltónico",
+        colorblindModeHint:
+          "Resaltado de diferencias más intenso, con las líneas eliminadas más oscuras que las añadidas",
+      },
     },
     shortcuts: {
       dialogTitle: "Atajos",
