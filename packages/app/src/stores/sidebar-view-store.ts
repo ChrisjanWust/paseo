@@ -13,6 +13,12 @@ export type SidebarGroupMode = "project" | "status";
  */
 export type SidebarProjectSortMode = "manual" | "recent";
 
+/**
+ * How the workspaces inside each project section are ordered. "manual" is the persisted drag
+ * order; "recent" puts the workspace with the freshest activity first.
+ */
+export type SidebarWorkspaceSortMode = "manual" | "recent";
+
 const SIDEBAR_VIEW_STORAGE_KEY = "sidebar-view";
 const LEGACY_SIDEBAR_GROUP_MODE_STORAGE_KEY = "sidebar-group-mode";
 const SIDEBAR_VIEW_STORE_VERSION = 6;
@@ -54,6 +60,7 @@ function toggleFilterEntry(list: readonly string[], key: string): string[] {
 interface SidebarViewStoreState {
   groupMode: SidebarGroupMode;
   projectSort: SidebarProjectSortMode;
+  workspaceSort: SidebarWorkspaceSortMode;
   // Empty means "all hosts". A non-empty list pins the sidebar to those hosts.
   hostFilters: string[];
   /**
@@ -70,6 +77,7 @@ interface SidebarViewStoreState {
   labelFilter: SidebarLabelFilter;
   setGroupMode: (mode: SidebarGroupMode) => void;
   setProjectSort: (mode: SidebarProjectSortMode) => void;
+  setWorkspaceSort: (mode: SidebarWorkspaceSortMode) => void;
   toggleHostFilter: (serverId: string) => void;
   clearHostFilters: () => void;
   toggleProjectFilter: (viewKey: string) => void;
@@ -83,6 +91,7 @@ interface SidebarViewStoreState {
 interface SidebarViewPersistedState {
   groupMode: SidebarGroupMode;
   projectSort: SidebarProjectSortMode;
+  workspaceSort: SidebarWorkspaceSortMode;
   hostFilters: string[];
   projectFilters: string[];
   labelFilter: SidebarLabelFilter;
@@ -90,12 +99,14 @@ interface SidebarViewPersistedState {
 
 const PersistedSidebarGroupModeSchema = z.enum(["project", "status", "label"]);
 const PersistedSidebarProjectSortSchema = z.enum(["manual", "recent"]);
+const PersistedSidebarWorkspaceSortSchema = z.enum(["manual", "recent"]);
 const SidebarLabelFilterSchema = z.object({
   labels: z.array(z.string()),
 });
 const SidebarViewPersistedStateSchema = z.strictObject({
   groupMode: PersistedSidebarGroupModeSchema.optional(),
   projectSort: PersistedSidebarProjectSortSchema.optional(),
+  workspaceSort: PersistedSidebarWorkspaceSortSchema.optional(),
   hostFilters: z.array(z.string()).optional(),
   hostFilter: z.string().nullable().optional(),
   projectFilters: z.array(z.string()).optional(),
@@ -135,6 +146,7 @@ export function migrateSidebarViewState(persistedState: unknown): SidebarViewPer
     return {
       groupMode: "project",
       projectSort: "manual",
+      workspaceSort: "manual",
       hostFilters: [],
       projectFilters: [],
       labelFilter: emptyLabelFilter(),
@@ -147,6 +159,7 @@ export function migrateSidebarViewState(persistedState: unknown): SidebarViewPer
     return {
       groupMode: legacyGroupMode,
       projectSort: "manual",
+      workspaceSort: "manual",
       hostFilters: [],
       projectFilters: [],
       labelFilter: emptyLabelFilter(),
@@ -156,6 +169,7 @@ export function migrateSidebarViewState(persistedState: unknown): SidebarViewPer
   return {
     groupMode: state.groupMode === "status" ? "status" : "project",
     projectSort: state.projectSort ?? "manual",
+    workspaceSort: state.workspaceSort ?? "manual",
     hostFilters: readHostFilters(state),
     projectFilters: state.projectFilters ?? [],
     labelFilter: state.labelFilter
@@ -194,11 +208,13 @@ export const useSidebarViewStore = create<SidebarViewStoreState>()(
     (set) => ({
       groupMode: "project",
       projectSort: "manual",
+      workspaceSort: "manual",
       hostFilters: [],
       projectFilters: [],
       labelFilter: emptyLabelFilter(),
       setGroupMode: (mode) => set({ groupMode: mode }),
       setProjectSort: (mode) => set({ projectSort: mode }),
+      setWorkspaceSort: (mode) => set({ workspaceSort: mode }),
       toggleHostFilter: (serverId) =>
         set((state) => ({ hostFilters: toggleFilterEntry(state.hostFilters, serverId) })),
       clearHostFilters: () => set({ hostFilters: [] }),
@@ -246,6 +262,7 @@ export const useSidebarViewStore = create<SidebarViewStoreState>()(
       partialize: (state) => ({
         groupMode: state.groupMode,
         projectSort: state.projectSort,
+        workspaceSort: state.workspaceSort,
         hostFilters: state.hostFilters,
         projectFilters: state.projectFilters,
         labelFilter: state.labelFilter,

@@ -1093,6 +1093,11 @@ export const zhCN: TranslationResources = {
         manual: "手动",
         recent: "最近活动",
       },
+      workspaceSort: {
+        label: "工作区排序",
+        manual: "手动",
+        recent: "最近活动",
+      },
       titleSource: {
         label: "标题",
         title: "标题",

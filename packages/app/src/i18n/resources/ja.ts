@@ -1114,6 +1114,11 @@ export const ja: TranslationResources = {
         manual: "手動",
         recent: "最近のアクティビティ",
       },
+      workspaceSort: {
+        label: "ワークスペースの並び順",
+        manual: "手動",
+        recent: "最近のアクティビティ",
+      },
       titleSource: {
         label: "タイトル",
         title: "タイトル",

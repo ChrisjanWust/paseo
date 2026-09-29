@@ -1101,6 +1101,11 @@ export const ar: TranslationResources = {
         manual: "يدوي",
         recent: "النشاط الأخير",
       },
+      workspaceSort: {
+        label: "ترتيب مساحات العمل",
+        manual: "يدوي",
+        recent: "النشاط الأخير",
+      },
       titleSource: {
         label: "العنوان",
         title: "العنوان",

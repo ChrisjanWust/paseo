@@ -53,6 +53,7 @@ import {
   SIDEBAR_UNLABELLED_LABEL_KEY,
   type SidebarGroupMode,
   type SidebarProjectSortMode,
+  type SidebarWorkspaceSortMode,
 } from "@/stores/sidebar-view-store";
 import { workspaceLabelKey, type WorkspaceLabelColor } from "@getpaseo/protocol/workspace-labels";
 import type { WorkspaceTitleSource } from "@/hooks/use-settings";
@@ -76,7 +77,8 @@ const ThemedCircle = withUnistyles(Circle);
 
 /** Fits the item's 16pt leading slot with a hair of room, matching the trailing check. */
 const OPTION_ICON_SIZE = 14;
-const MENU_WIDTH = 232;
+// Fits the longest English root row, "Sort workspaces" beside "Recent activity", without truncating.
+const MENU_WIDTH = 288;
 
 /**
  * Unlabelled's stand-in for a color dot: the same circle at the same size, hollow.
@@ -104,6 +106,8 @@ const PROJECT_SORT_ICONS: Record<SidebarProjectSortMode, OptionIcon> = {
   manual: withUnistyles(GripVertical),
   recent: withUnistyles(History),
 };
+
+const WORKSPACE_SORT_ICONS: Record<SidebarWorkspaceSortMode, OptionIcon> = PROJECT_SORT_ICONS;
 
 const TITLE_SOURCE_ICONS: Record<WorkspaceTitleSource, OptionIcon> = {
   title: withUnistyles(Type),
@@ -141,6 +145,7 @@ const TRAILING_ICONS: Record<SidebarTrailingChoice, OptionIcon> = {
 
 const GROUPING_MODES: readonly SidebarGroupMode[] = ["project", "status"];
 const PROJECT_SORT_MODES: readonly SidebarProjectSortMode[] = ["manual", "recent"];
+const WORKSPACE_SORT_MODES: readonly SidebarWorkspaceSortMode[] = ["manual", "recent"];
 const TITLE_SOURCES: readonly WorkspaceTitleSource[] = ["title", "branch"];
 const PROJECT_WORKSPACE_DISPLAYS: readonly SidebarProjectWorkspaceDisplay[] =
   SIDEBAR_PROJECT_WORKSPACE_DISPLAYS;
@@ -154,6 +159,11 @@ const GROUPING_LABEL_KEYS: Record<SidebarGroupMode, string> = {
 const PROJECT_SORT_LABEL_KEYS: Record<SidebarProjectSortMode, string> = {
   manual: "sidebar.display.projectSort.manual",
   recent: "sidebar.display.projectSort.recent",
+};
+
+const WORKSPACE_SORT_LABEL_KEYS: Record<SidebarWorkspaceSortMode, string> = {
+  manual: "sidebar.display.workspaceSort.manual",
+  recent: "sidebar.display.workspaceSort.recent",
 };
 
 const TITLE_SOURCE_LABEL_KEYS: Record<WorkspaceTitleSource, string> = {
@@ -266,6 +276,20 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
         ),
       },
       {
+        id: "workspaceSort",
+        title: t("sidebar.display.workspaceSort.label"),
+        content: (
+          <OptionList
+            values={WORKSPACE_SORT_MODES}
+            icons={WORKSPACE_SORT_ICONS}
+            labelKeys={WORKSPACE_SORT_LABEL_KEYS}
+            selectedValue={preferences.workspaceSort}
+            onSelect={preferences.setWorkspaceSort}
+            testIDPrefix="sidebar-workspace-sort"
+          />
+        ),
+      },
+      {
         id: "titleSource",
         title: t("sidebar.display.titleSource.label"),
         content: (
@@ -368,15 +392,24 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
           >
             {t("sidebar.display.grouping.label")}
           </MenuSubTrigger>
-          {/* Only project grouping renders project sections, so only it gets a sort row. */}
+          {/* Only project grouping renders project sections, so only it gets the sort rows. */}
           {preferences.grouping === "project" ? (
-            <MenuSubTrigger
-              id="projectSort"
-              value={t(PROJECT_SORT_LABEL_KEYS[preferences.projectSort])}
-              testID="sidebar-display-project-sort"
-            >
-              {t("sidebar.display.projectSort.label")}
-            </MenuSubTrigger>
+            <>
+              <MenuSubTrigger
+                id="projectSort"
+                value={t(PROJECT_SORT_LABEL_KEYS[preferences.projectSort])}
+                testID="sidebar-display-project-sort"
+              >
+                {t("sidebar.display.projectSort.label")}
+              </MenuSubTrigger>
+              <MenuSubTrigger
+                id="workspaceSort"
+                value={t(WORKSPACE_SORT_LABEL_KEYS[preferences.workspaceSort])}
+                testID="sidebar-display-workspace-sort"
+              >
+                {t("sidebar.display.workspaceSort.label")}
+              </MenuSubTrigger>
+            </>
           ) : null}
           <MenuSubTrigger
             id="projectWorkspaces"

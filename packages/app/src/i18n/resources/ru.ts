@@ -1118,6 +1118,11 @@ export const ru: TranslationResources = {
         manual: "Вручную",
         recent: "Недавняя активность",
       },
+      workspaceSort: {
+        label: "Сортировка рабочих пространств",
+        manual: "Вручную",
+        recent: "Недавняя активность",
+      },
       titleSource: {
         label: "Заголовок",
         title: "Заголовок",
