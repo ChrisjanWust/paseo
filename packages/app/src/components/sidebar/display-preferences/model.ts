@@ -11,6 +11,7 @@ import {
   type SidebarGroupMode,
   type SidebarLabelFilter,
   type SidebarProjectSortMode,
+  type SidebarWorkspaceSortMode,
 } from "@/stores/sidebar-view-store";
 import { DEFAULT_SIDEBAR_CHECKS_DISPLAY, type SidebarChecksDisplay } from "./checks-display";
 import { DEFAULT_SIDEBAR_ROW_ITEMS, type SidebarRowItem, type SidebarRowItems } from "./row-items";
@@ -23,6 +24,8 @@ export interface SidebarDisplayPreferences {
   setGrouping: (mode: SidebarGroupMode) => void;
   projectSort: SidebarProjectSortMode;
   setProjectSort: (mode: SidebarProjectSortMode) => void;
+  workspaceSort: SidebarWorkspaceSortMode;
+  setWorkspaceSort: (mode: SidebarWorkspaceSortMode) => void;
   titleSource: WorkspaceTitleSource;
   setTitleSource: (source: WorkspaceTitleSource) => void;
   projectWorkspaceDisplay: SidebarProjectWorkspaceDisplay;
@@ -61,6 +64,8 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
   const setGrouping = useSidebarViewStore((state) => state.setGroupMode);
   const projectSort = useSidebarViewStore((state) => state.projectSort);
   const setProjectSort = useSidebarViewStore((state) => state.setProjectSort);
+  const workspaceSort = useSidebarViewStore((state) => state.workspaceSort);
+  const setWorkspaceSort = useSidebarViewStore((state) => state.setWorkspaceSort);
   const hostFilters = useSidebarViewStore((state) => state.hostFilters);
   const toggleHostFilter = useSidebarViewStore((state) => state.toggleHostFilter);
   const clearHostFilters = useSidebarViewStore((state) => state.clearHostFilters);
@@ -129,6 +134,8 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
       setGrouping,
       projectSort,
       setProjectSort,
+      workspaceSort,
+      setWorkspaceSort,
       titleSource: workspaceTitleSource,
       setTitleSource,
       projectWorkspaceDisplay: sidebarProjectWorkspaceDisplay,
@@ -156,6 +163,8 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
       setGrouping,
       projectSort,
       setProjectSort,
+      workspaceSort,
+      setWorkspaceSort,
       workspaceTitleSource,
       setTitleSource,
       sidebarProjectWorkspaceDisplay,

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { darkHighlightColors, resolveSyntaxColors } from "@getpaseo/highlight";
-import { DEFAULT_UI_FONT_STACK, REGISTERED_THEMES } from "@/styles/theme";
+import { DEFAULT_UI_FONT_STACK, REGISTERED_THEMES, resolveStatusColors } from "@/styles/theme";
+import { hexColorWithAlpha } from "@/utils/color";
 import { applyAppearance, type AppearanceInput } from "./apply";
 
 // Override the global react-native-unistyles mock (vitest.setup.ts) so that
@@ -37,7 +38,15 @@ interface FakeTheme {
     "4xl": number;
   };
   lineHeight: { diff: number };
-  colors: { foreground: string; syntax: Record<string, string> };
+  contentMaxWidth: number;
+  colors: {
+    foreground: string;
+    statusSuccess: string;
+    statusDanger: string;
+    diffAdditionBackground?: string;
+    diffDeletionBackground?: string;
+    syntax: Record<string, string>;
+  };
 }
 
 function makeFakeTheme(): FakeTheme {
@@ -56,7 +65,8 @@ function makeFakeTheme(): FakeTheme {
       "4xl": 26,
     },
     lineHeight: { diff: 22 },
-    colors: { foreground: "#fff", syntax: {} },
+    contentMaxWidth: 820,
+    colors: { foreground: "#fff", statusSuccess: "#3e704a", statusDanger: "#9d433b", syntax: {} },
   };
 }
 
@@ -67,15 +77,17 @@ function makeInput(overrides: Partial<AppearanceInput> = {}): AppearanceInput {
     uiBaseFontSize: 14,
     contentFontSize: 15,
     codeFontSize: 12,
+    contentMaxWidth: 820,
     syntaxTheme: "one",
+    colorblindMode: false,
     ...overrides,
   };
 }
 
 // Run a single captured updater (default the first) against a fresh fake theme.
-function runCapturedUpdater(call = 0): FakeTheme {
+function runCapturedUpdater(call = 0, theme: FakeTheme = makeFakeTheme()): FakeTheme {
   const updater = updateTheme.mock.calls[call]?.[1] as unknown as ThemeUpdater;
-  return updater(makeFakeTheme());
+  return updater(theme);
 }
 
 describe("applyAppearance", () => {
@@ -100,6 +112,12 @@ describe("applyAppearance", () => {
       "darkPureBlack",
       ...ALL_THEME_KEYS.filter((key) => key !== "darkPureBlack"),
     ]);
+  });
+
+  it("patches the content max width into the theme", () => {
+    applyAppearance(makeInput({ contentMaxWidth: 1600 }));
+
+    expect(runCapturedUpdater().contentMaxWidth).toBe(1600);
   });
 
   it("resolves an empty UI font family to the default stack", () => {
@@ -185,6 +203,43 @@ describe("applyAppearance", () => {
 
     const { colors } = runCapturedUpdater();
     expect(colors.syntax).toEqual(resolveSyntaxColors("dracula", "dark"));
+  });
+
+  it("tints diff rows at the default opacities", () => {
+    applyAppearance(makeInput());
+
+    const { colors } = runCapturedUpdater();
+    expect(colors.diffAdditionBackground).toBe(hexColorWithAlpha("#6cb17b", 0.15));
+    expect(colors.diffDeletionBackground).toBe(hexColorWithAlpha("#d8847b", 0.1));
+  });
+
+  it("uses the scheme's vivid status colors in colorblind mode", () => {
+    applyAppearance(makeInput({ colorblindMode: true }));
+    const dark = runCapturedUpdater();
+    expect(dark.colors.statusSuccess).toBe("#1aff1a");
+    expect(dark.colors.statusDanger).toBe("#ff5c5c");
+
+    const light = runCapturedUpdater(0, { ...makeFakeTheme(), colorScheme: "light" });
+    expect(light.colors.statusSuccess).toBe("#00aa02");
+    expect(light.colors.statusDanger).toBe("#d50000");
+  });
+
+  it("restores the default status colors when colorblind mode is turned off", () => {
+    applyAppearance(makeInput({ colorblindMode: true }));
+    const patched = runCapturedUpdater();
+
+    updateTheme.mockClear();
+    applyAppearance(makeInput());
+    const { colors } = runCapturedUpdater(0, patched);
+    expect(colors).toMatchObject(resolveStatusColors("dark", false));
+  });
+
+  it("uses vivid green and red, with a stronger green, in colorblind mode", () => {
+    applyAppearance(makeInput({ colorblindMode: true }));
+
+    const { colors } = runCapturedUpdater();
+    expect(colors.diffAdditionBackground).toBe(hexColorWithAlpha("#1aff1a", 0.2));
+    expect(colors.diffDeletionBackground).toBe(hexColorWithAlpha("#d50000", 0.15));
   });
 
   it("resolves a syntax theme using the theme's own color scheme", () => {

@@ -494,30 +494,66 @@ export function sortSidebarProjectsByRecentActivity(input: {
   projects: SidebarProjectEntry[];
   workspaceEntriesByKey: ReadonlyMap<string, SidebarWorkspaceEntry>;
 }): SidebarProjectEntry[] {
-  if (input.projects.length <= 1) {
-    return input.projects;
-  }
-
-  const keyed = input.projects.map((project, index) => {
+  return sortByLatestActivity(input.projects, (project) => {
     let latest = Number.NEGATIVE_INFINITY;
     for (const placement of project.workspaces) {
-      const enteredAt = input.workspaceEntriesByKey.get(placement.workspaceKey)?.statusEnteredAt;
-      const time = enteredAt?.getTime();
-      if (time !== undefined && Number.isFinite(time) && time > latest) {
+      const time = workspaceActivityTime(placement, input.workspaceEntriesByKey);
+      if (time > latest) {
         latest = time;
       }
     }
-    return { project, index, latest };
+    return latest;
   });
+}
 
+/**
+ * Each project's workspaces with the freshest activity first, for the "recent" workspace sort.
+ *
+ * Same timestamp and tie-breaking as `sortSidebarProjectsByRecentActivity`: undated workspaces
+ * keep their incoming (manual) order after every dated one. Returns the input array, and each
+ * untouched project object, when nothing moves.
+ */
+export function sortSidebarWorkspacesByRecentActivity(input: {
+  projects: SidebarProjectEntry[];
+  workspaceEntriesByKey: ReadonlyMap<string, SidebarWorkspaceEntry>;
+}): SidebarProjectEntry[] {
+  let changed = false;
+  const projects = input.projects.map((project) => {
+    const workspaces = sortByLatestActivity(project.workspaces, (placement) =>
+      workspaceActivityTime(placement, input.workspaceEntriesByKey),
+    );
+    if (workspaces === project.workspaces) {
+      return project;
+    }
+    changed = true;
+    return { ...project, workspaces };
+  });
+  return changed ? projects : input.projects;
+}
+
+function workspaceActivityTime(
+  placement: SidebarWorkspacePlacement,
+  workspaceEntriesByKey: ReadonlyMap<string, SidebarWorkspaceEntry>,
+): number {
+  const time = workspaceEntriesByKey.get(placement.workspaceKey)?.statusEnteredAt?.getTime();
+  return time !== undefined && Number.isFinite(time) ? time : Number.NEGATIVE_INFINITY;
+}
+
+/** Stable newest-first sort that returns the input array when nothing moves. */
+function sortByLatestActivity<T>(items: T[], getLatest: (item: T) => number): T[] {
+  if (items.length <= 1) {
+    return items;
+  }
+
+  const keyed = items.map((item, index) => ({ item, index, latest: getLatest(item) }));
   keyed.sort((left, right) =>
     left.latest === right.latest ? left.index - right.index : right.latest - left.latest,
   );
 
   if (keyed.every((entry, index) => entry.index === index)) {
-    return input.projects;
+    return items;
   }
-  return keyed.map((entry) => entry.project);
+  return keyed.map((entry) => entry.item);
 }
 
 export function applyStoredOrdering<T>(input: {

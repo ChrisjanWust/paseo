@@ -7,7 +7,8 @@
  * scaling the a/b vector moves a colour straight toward grey at the same apparent lightness.
  *
  * Reducing chroma always stays inside sRGB — the gamut is convex around the neutral axis — so
- * these conversions never need gamut mapping.
+ * desaturating never needs gamut mapping. Moving lightness can leave the gamut, so capping
+ * lightness gives up chroma until the colour fits.
  */
 
 interface Oklab {
@@ -103,4 +104,39 @@ export function desaturateHexColor(hex: string, amount: number): string {
   });
 
   return `#${toHexChannel(linearToSrgb(linearR))}${toHexChannel(linearToSrgb(linearG))}${toHexChannel(linearToSrgb(linearB))}`;
+}
+
+function isInGamut(channels: [number, number, number]): boolean {
+  return channels.every((channel) => channel >= -1e-4 && channel <= 1 + 1e-4);
+}
+
+/**
+ * Darkens a colour to at most `maxLightness` (OKLab L, 0–1) while keeping its hue. Colours
+ * already that dark come back unchanged, so one cap turns a pale and a dark colour into text of
+ * similar weight. Where the darker colour cannot hold the original chroma in sRGB, chroma is
+ * reduced just enough to fit. Input that is not a hex colour comes back untouched.
+ */
+export function capHexColorLightness(hex: string, maxLightness: number): string {
+  const rgb = parseHexColor(hex);
+  if (!rgb) return hex;
+
+  const [r, g, b] = rgb;
+  const lab = linearRgbToOklab(srgbToLinear(r), srgbToLinear(g), srgbToLinear(b));
+  if (lab.L <= maxLightness) return hex;
+
+  const toLinear = (chroma: number) =>
+    oklabToLinearRgb({ L: maxLightness, a: lab.a * chroma, b: lab.b * chroma });
+  let low = 0;
+  let high = 1;
+  if (!isInGamut(toLinear(high))) {
+    for (let step = 0; step < 20; step += 1) {
+      const mid = (low + high) / 2;
+      if (isInGamut(toLinear(mid))) low = mid;
+      else high = mid;
+    }
+    high = low;
+  }
+  const [linearR, linearG, linearB] = toLinear(high);
+
+  return `#${toHexChannel(linearToSrgb(Math.max(0, linearR)))}${toHexChannel(linearToSrgb(Math.max(0, linearG)))}${toHexChannel(linearToSrgb(Math.max(0, linearB)))}`;
 }

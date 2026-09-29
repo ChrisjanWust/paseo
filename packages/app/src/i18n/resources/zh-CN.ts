@@ -439,7 +439,9 @@ export const zhCN: TranslationResources = {
       recovery: {
         archivedTitle: "Workspace 已归档",
         restoreDescription:
-          "{{workspaceName}} 已归档，其 worktree 已移除。恢复分支 {{branch}} 以重新打开。",
+          "恢复 {{workspaceName}} 以返回其中的代理。worktree 将使用分支 {{branch}}。",
+        restoreWithoutBranchDescription:
+          "恢复 {{workspaceName}} 以返回其中的代理。新分支将从保存的基准分支或仓库默认分支创建。",
         unarchiveDescription: "{{workspaceName}} 已归档。取消归档以重新打开。",
         restoreAction: "恢复",
         unarchiveAction: "取消归档",
@@ -1091,6 +1093,11 @@ export const zhCN: TranslationResources = {
         manual: "手动",
         recent: "最近活动",
       },
+      workspaceSort: {
+        label: "工作区排序",
+        manual: "手动",
+        recent: "最近活动",
+      },
       titleSource: {
         label: "标题",
         title: "标题",
@@ -1523,6 +1530,8 @@ export const zhCN: TranslationResources = {
     noFiles: "没有找到文件或目录",
     noCommands: "没有找到 commands",
     failedToLoad: "加载失败",
+    chooseProjectForCommands: "选择项目以查看命令",
+    chooseModelForCommands: "选择模型以查看命令",
   },
   loadOlderHistory: {
     failed: "无法加载更早历史",
@@ -1614,6 +1623,10 @@ export const zhCN: TranslationResources = {
     },
   },
   pairing: {
+    hostPassword: {
+      title: "{{host}} 的密码",
+      label: "主机密码",
+    },
     connectionMethods: {
       title: "添加连接",
       direct: {
@@ -1946,8 +1959,11 @@ export const zhCN: TranslationResources = {
     groupInfo: "关于 {{title}}",
     sections: {
       general: "通用",
+      chat: "聊天",
       appearance: "外观",
-      layout: en.settings.sections.layout,
+      sidebar: "侧边栏",
+      terminal: "终端",
+      browser: "浏览器",
       editor: "编辑器",
       shortcuts: "快捷键",
       integrations: "集成",
@@ -2005,6 +2021,7 @@ export const zhCN: TranslationResources = {
     },
     general: {
       title: "通用",
+      sending: "发送",
       browserData: {
         title: "浏览器数据",
         siteData: "Cookie 和网站数据",
@@ -2030,8 +2047,6 @@ export const zhCN: TranslationResources = {
         },
       },
       serviceUrls: {
-        label: "服务 URL",
-        description: "运行脚本中的 URL 打开位置",
         options: {
           ask: "询问",
           inApp: "在 Paseo 中",
@@ -2050,7 +2065,6 @@ export const zhCN: TranslationResources = {
       toolCallDetail: {
         label: "工具调用显示",
         description: "工具调用在时间线中的显示方式",
-        accessibilityLabel: "选择工具调用显示方式（{{value}}）",
         options: {
           overview: "摘要",
           detailed: "完整详情",
@@ -2177,6 +2191,14 @@ export const zhCN: TranslationResources = {
         codeSizeHint: "用于代码、差异和终端输出",
         codeSizeAccessibility: "代码字号",
       },
+      layout: {
+        title: "布局",
+        contentWidth: "内容宽度",
+        contentWidthHint: "宽屏上聊天和 Markdown 文件的最大宽度",
+        contentWidthAccessibility: "内容宽度（像素）",
+        reset: "重置",
+        resetAccessibility: "将内容宽度重置为默认值",
+      },
       syntax: {
         title: "语法",
         highlightTheme: "高亮主题",
@@ -2184,6 +2206,11 @@ export const zhCN: TranslationResources = {
         highlightThemeAccessibility: "高亮主题：{{value}}",
         previewAccessibility: "内容排版、语法主题和代码字体的实时预览",
         previewContent: "内容和代码预览",
+      },
+      accessibility: {
+        title: "无障碍",
+        colorblindMode: "色盲模式",
+        colorblindModeHint: "在差异、检查和状态中使用亮度也不同的鲜明绿色和红色",
       },
     },
     shortcuts: {
@@ -2286,6 +2313,9 @@ export const zhCN: TranslationResources = {
       },
     },
     host: {
+      password: {
+        guidance: "移除此主机，然后使用此守护进程要求的密码重新添加。",
+      },
       appearance: {
         title: "外观",
         name: {

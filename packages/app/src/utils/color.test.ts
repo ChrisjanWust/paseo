@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { desaturateHexColor, hexColorWithAlpha, parseHexColor } from "./color";
+import {
+  capHexColorLightness,
+  desaturateHexColor,
+  hexColorWithAlpha,
+  parseHexColor,
+} from "./color";
 
 describe("parseHexColor", () => {
   it("parses six-digit hex", () => {
@@ -69,5 +74,24 @@ describe("desaturateHexColor", () => {
   it("passes non-hex input through untouched", () => {
     expect(desaturateHexColor("none", 0.5)).toBe("none");
     expect(desaturateHexColor("currentColor", 0.5)).toBe("currentColor");
+  });
+});
+
+describe("capHexColorLightness", () => {
+  it("leaves colours at or below the cap alone", () => {
+    expect(capHexColorLightness("#3e704a", 0.6)).toBe("#3e704a");
+    expect(capHexColorLightness("#6cb17b", 1)).toBe("#6cb17b");
+  });
+
+  // Pinned like the desaturate values. The vivid green and red cannot hold their chroma at
+  // L=0.42, so these also cover the gamut fit.
+  it("matches known values", () => {
+    expect(capHexColorLightness("#3e704a", 0.42)).toBe("#275935");
+    expect(capHexColorLightness("#1aff1a", 0.42)).toBe("#005f00");
+    expect(capHexColorLightness("#d50000", 0.42)).toBe("#950000");
+  });
+
+  it("passes non-hex input through untouched", () => {
+    expect(capHexColorLightness("currentColor", 0.42)).toBe("currentColor");
   });
 });

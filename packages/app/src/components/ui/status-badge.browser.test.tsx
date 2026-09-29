@@ -32,24 +32,41 @@ afterEach(() => {
   }
 });
 
-describe("StatusBadge", () => {
-  it.each(["success", "warning", "error", "muted"] as const)(
-    "uses the semantic badge shell for the %s variant",
-    (variant) => {
-      const badge = mountBadge(variant);
-      const style = getComputedStyle(badge);
+function parseColor(value: string): { rgb: string; alpha: number } {
+  const channels = value.match(/[\d.]+/g)?.map(Number) ?? [];
+  return { rgb: channels.slice(0, 3).join(","), alpha: channels[3] ?? 1 };
+}
 
-      expect(style.backgroundColor).toBe("rgb(228, 228, 231)");
-      expect(style.borderColor).toBe("rgb(228, 228, 231)");
+describe("StatusBadge", () => {
+  it("uses the neutral badge shell for the muted variant", () => {
+    const style = getComputedStyle(mountBadge("muted"));
+
+    expect(style.backgroundColor).toBe("rgb(228, 228, 231)");
+    expect(style.borderColor).toBe("rgb(228, 228, 231)");
+  });
+
+  it.each([
+    ["success", "21,128,61"],
+    ["warning", "217,119,6"],
+    ["error", "185,28,28"],
+  ] as const)(
+    "fills the %s variant with a translucent tint of its own status color",
+    (variant, statusRgb) => {
+      const fill = parseColor(getComputedStyle(mountBadge(variant)).backgroundColor);
+
+      expect(fill.rgb).toBe(statusRgb);
+      expect(fill.alpha).toBeGreaterThan(0);
+      expect(fill.alpha).toBeLessThan(0.5);
     },
   );
 
+  // The status color capped in lightness, so the label stays readable on its own tint.
   it.each([
-    ["success", "rgb(21, 128, 61)"],
-    ["warning", "rgb(217, 119, 6)"],
-    ["error", "rgb(185, 28, 28)"],
+    ["success", "rgb(0, 94, 40)"],
+    ["warning", "rgb(116, 60, 0)"],
+    ["error", "rgb(149, 0, 9)"],
     ["muted", "rgb(102, 102, 102)"],
-  ] as const)("uses the semantic %s signal for its text", (variant, expectedColor) => {
+  ] as const)("uses the %s tint foreground for its text", (variant, expectedColor) => {
     const badge = mountBadge(variant);
     const text = badge.lastElementChild;
     if (!(text instanceof HTMLElement)) {
