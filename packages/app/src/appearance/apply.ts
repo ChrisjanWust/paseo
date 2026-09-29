@@ -1,13 +1,14 @@
 import { UnistylesRuntime } from "react-native-unistyles";
 import { resolveSyntaxColors, type SyntaxThemeId } from "@getpaseo/highlight";
 import {
-  COLORBLIND_DIFF_BACKGROUND_ALPHA,
-  DEFAULT_DIFF_BACKGROUND_ALPHA,
+  COLORBLIND_DIFF_BACKGROUND_STYLE,
+  DEFAULT_DIFF_BACKGROUND_STYLE,
   DEFAULT_UI_FONT_STACK,
   DEFAULT_MONO_FONT_STACK,
   FONT_SIZE,
   REGISTERED_THEMES,
   diffBackgroundColors,
+  resolveStatusColors,
   type Theme,
 } from "@/styles/theme";
 import { applyRootUiFont } from "./apply-root-font";
@@ -60,7 +61,9 @@ function scaleFontSize(
  * always current and makes ordering vs `setTheme`/`setAdaptiveThemes` irrelevant.
  *
  * The updater preserves the active theme wholesale (surfaces, accents,
- * terminal) and only patches the font ramp, content width, syntax palette, and diff row backgrounds.
+ * terminal) and only patches the font ramp, content width, syntax palette, status colors, and
+ * diff row backgrounds. Status colors come from the theme's color scheme, not the live theme,
+ * so turning colorblind mode off restores them.
  * `updateTheme` replaces the stored theme rather than merging, so we spread
  * `...t` first.
  */
@@ -68,9 +71,9 @@ export function applyAppearance(input: AppearanceInput): void {
   const ui = input.uiFontFamily.trim() || DEFAULT_UI_FONT_STACK;
   const mono = input.monoFontFamily.trim() || DEFAULT_MONO_FONT_STACK;
   const diffLineHeight = Math.round(input.codeFontSize * 1.5); // couple to code size
-  const diffAlpha = input.colorblindMode
-    ? COLORBLIND_DIFF_BACKGROUND_ALPHA
-    : DEFAULT_DIFF_BACKGROUND_ALPHA;
+  const diffStyle = input.colorblindMode
+    ? COLORBLIND_DIFF_BACKGROUND_STYLE
+    : DEFAULT_DIFF_BACKGROUND_STYLE;
   const activeTheme = UnistylesRuntime.themeName;
   // Unistyles web emits after each registry patch. Updating the mounted theme
   // first ensures subscribers receive its new numeric tokens in this render;
@@ -88,6 +91,7 @@ export function applyAppearance(input: AppearanceInput): void {
         input.codeFontSize,
       );
       const lineHeight = { ...t.lineHeight, diff: diffLineHeight };
+      const statusColors = resolveStatusColors(t.colorScheme, input.colorblindMode);
       if (t.colorScheme === "light") {
         return {
           ...t,
@@ -98,7 +102,8 @@ export function applyAppearance(input: AppearanceInput): void {
           colors: {
             ...t.colors,
             syntax: resolveSyntaxColors(input.syntaxTheme, t.colorScheme),
-            ...diffBackgroundColors(t.colors, diffAlpha),
+            ...statusColors,
+            ...diffBackgroundColors(statusColors, diffStyle),
           },
         };
       }
@@ -111,7 +116,8 @@ export function applyAppearance(input: AppearanceInput): void {
         colors: {
           ...t.colors,
           syntax: resolveSyntaxColors(input.syntaxTheme, t.colorScheme),
-          ...diffBackgroundColors(t.colors, diffAlpha),
+          ...statusColors,
+          ...diffBackgroundColors(statusColors, diffStyle),
         },
       };
     });

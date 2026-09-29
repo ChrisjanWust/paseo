@@ -1,6 +1,6 @@
 import { Platform } from "react-native";
 import { darkHighlightColors, lightHighlightColors } from "@getpaseo/highlight";
-import { hexColorWithAlpha } from "@/utils/color";
+import { capHexColorLightness, hexColorWithAlpha } from "@/utils/color";
 
 export const baseColors = {
   // Base colors
@@ -127,7 +127,8 @@ const darkDiffColors = {
 // Status colors — semantic signals for success/danger/warning/merged. There is exactly one
 // token per signal, and every status surface uses it: PR state icons, CI check icons and
 // pies, diff stats, file-change icons, status badges, usage bars. Status *dots* are the
-// exception and have their own band below. A surface does not otherwise get a quieter or
+// exception and have their own band below, and badge text is capped in lightness so it stays
+// readable on its own tint (see the status tints). A surface does not otherwise get a quieter or
 // louder variant of a status color because of where it sits — if a dense list feels loud,
 // that is a density or weight problem, not a color problem.
 //
@@ -163,39 +164,83 @@ const darkStatusColors = {
 // Status tints — the fill of a status badge. The status color itself at low opacity, so a
 // badge takes its state's hue from the same source as its text and never drifts from it.
 // Dark surfaces swallow more of the tint, so the dark band runs a little stronger.
-function statusTints(colors: typeof lightStatusColors, alphaHex: string) {
+//
+// The badge text is the status color capped in lightness. On light surfaces the tint lightens
+// the pill as well, and a status color that reads fine as an icon on the page washes out as
+// text on its own tint, badly so for vivid greens. A cap rather than a fixed darkening keeps
+// dark status colors as they are and pulls pale ones down to the same weight. At L=0.42 every
+// badge clears 4.5:1 on its tint over white and the sepia surfaces. Dark surfaces need no cap.
+function statusTints(colors: typeof lightStatusColors, alphaHex: string, textMaxLightness: number) {
   return {
     statusSuccessTint: `${colors.statusSuccess}${alphaHex}`,
     statusDangerTint: `${colors.statusDanger}${alphaHex}`,
     statusWarningTint: `${colors.statusWarning}${alphaHex}`,
+    statusSuccessTintForeground: capHexColorLightness(colors.statusSuccess, textMaxLightness),
+    statusDangerTintForeground: capHexColorLightness(colors.statusDanger, textMaxLightness),
+    statusWarningTintForeground: capHexColorLightness(colors.statusWarning, textMaxLightness),
   };
 }
 
-const lightStatusTints = statusTints(lightStatusColors, "1f"); // 12%
-const darkStatusTints = statusTints(darkStatusColors, "29"); // 16%
+// Colorblind mode replaces success and danger with vivid colors that differ in lightness as
+// well as hue, with green the lighter of the two, so the pair survives red-green color
+// blindness. Warning and merged keep their normal values. Light surfaces get a green pulled down
+// from the dark band's #1aff1a, which is too sharp and too faint there for icons and text.
+const colorblindStatusColors = {
+  light: { statusSuccess: "#00aa02", statusDanger: "#d50000" },
+  dark: { statusSuccess: "#1aff1a", statusDanger: "#ff5c5c" },
+};
+
+/** The status colors, their badge tints and badge text for one color scheme. */
+export function resolveStatusColors(colorScheme: "light" | "dark", colorblind: boolean) {
+  const base = colorScheme === "light" ? lightStatusColors : darkStatusColors;
+  const colors = colorblind ? { ...base, ...colorblindStatusColors[colorScheme] } : base;
+  return {
+    ...colors,
+    ...(colorScheme === "light"
+      ? statusTints(colors, "1f", 0.42) // 12%
+      : statusTints(colors, "29", 1)), // 16%
+  };
+}
 
 // Diff row backgrounds — the fill behind an added or removed line in a diff view. The status
 // color at low opacity, like the status tints above. The status pair shares one lightness, so
-// by default the two rows differ only in hue. Colorblind mode raises both and puts removed rows
-// above added ones, so the pair also differs in lightness.
-export interface DiffBackgroundAlpha {
-  addition: number;
-  deletion: number;
+// by default the two rows differ only in hue. Colorblind mode fills the rows with its own vivid
+// pair on every surface, including the #1aff1a that light surfaces are too pale for as text:
+// at low opacity it still reads as a clear green. It also strengthens the green, which comes
+// out lighter than the red tint on light and dark surfaces, so the pair differs in lightness.
+export interface DiffBackgroundStyle {
+  /** Replaces statusSuccess as the added-row color. */
+  additionColor?: string;
+  additionAlpha: number;
+  /** Replaces statusDanger as the removed-row color. */
+  deletionColor?: string;
+  deletionAlpha: number;
 }
 
-export const DEFAULT_DIFF_BACKGROUND_ALPHA: DiffBackgroundAlpha = { addition: 0.15, deletion: 0.1 };
-export const COLORBLIND_DIFF_BACKGROUND_ALPHA: DiffBackgroundAlpha = {
-  addition: 0.17,
-  deletion: 0.2,
+export const DEFAULT_DIFF_BACKGROUND_STYLE: DiffBackgroundStyle = {
+  additionAlpha: 0.15,
+  deletionAlpha: 0.1,
+};
+export const COLORBLIND_DIFF_BACKGROUND_STYLE: DiffBackgroundStyle = {
+  additionColor: "#1aff1a",
+  additionAlpha: 0.2,
+  deletionColor: "#d50000",
+  deletionAlpha: 0.15,
 };
 
 export function diffBackgroundColors(
   colors: { statusSuccess: string; statusDanger: string },
-  alpha: DiffBackgroundAlpha,
+  style: DiffBackgroundStyle,
 ) {
   return {
-    diffAdditionBackground: hexColorWithAlpha(colors.statusSuccess, alpha.addition),
-    diffDeletionBackground: hexColorWithAlpha(colors.statusDanger, alpha.deletion),
+    diffAdditionBackground: hexColorWithAlpha(
+      style.additionColor ?? colors.statusSuccess,
+      style.additionAlpha,
+    ),
+    diffDeletionBackground: hexColorWithAlpha(
+      style.deletionColor ?? colors.statusDanger,
+      style.deletionAlpha,
+    ),
   };
 }
 
@@ -328,9 +373,8 @@ export function buildLightSemanticColors(tint: LightThemeConfig) {
     ring: tint.ring,
 
     ...lightDiffColors,
-    ...lightStatusColors,
-    ...lightStatusTints,
-    ...diffBackgroundColors(lightStatusColors, DEFAULT_DIFF_BACKGROUND_ALPHA),
+    ...resolveStatusColors("light", false),
+    ...diffBackgroundColors(lightStatusColors, DEFAULT_DIFF_BACKGROUND_STYLE),
     ...lightStatusDotColors,
 
     terminal: {
@@ -461,9 +505,8 @@ export function buildDarkSemanticColors(tint: DarkThemeConfig) {
     ring,
 
     ...darkDiffColors,
-    ...darkStatusColors,
-    ...darkStatusTints,
-    ...diffBackgroundColors(darkStatusColors, DEFAULT_DIFF_BACKGROUND_ALPHA),
+    ...resolveStatusColors("dark", false),
+    ...diffBackgroundColors(darkStatusColors, DEFAULT_DIFF_BACKGROUND_STYLE),
     ...darkStatusDotColors,
 
     terminal: {

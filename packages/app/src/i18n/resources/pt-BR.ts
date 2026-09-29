@@ -2264,7 +2264,7 @@ export const ptBR: TranslationResources = {
         title: "Acessibilidade",
         colorblindMode: "Modo daltônico",
         colorblindModeHint:
-          "Destaques de diff mais fortes, com linhas removidas mais escuras que as adicionadas",
+          "Verde e vermelho vivos que também diferem em brilho, para diffs, verificações e status",
       },
     },
     shortcuts: {

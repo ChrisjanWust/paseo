@@ -2228,7 +2228,7 @@ export const ar: TranslationResources = {
       accessibility: {
         title: "إمكانية الوصول",
         colorblindMode: "وضع عمى الألوان",
-        colorblindModeHint: "إبراز أقوى للفروقات، مع أسطر محذوفة أغمق من الأسطر المضافة",
+        colorblindModeHint: "أخضر وأحمر زاهيان يختلفان في السطوع أيضًا، للفروقات والفحوصات والحالات",
       },
     },
     shortcuts: {

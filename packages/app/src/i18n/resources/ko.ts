@@ -2238,8 +2238,7 @@ export const ko: TranslationResources = {
       accessibility: {
         title: "접근성",
         colorblindMode: "색각 이상 모드",
-        colorblindModeHint:
-          "diff 강조를 더 진하게 하고, 삭제된 줄을 추가된 줄보다 어둡게 표시합니다",
+        colorblindModeHint: "diff, 검사, 상태에 밝기도 다른 선명한 초록과 빨강을 사용합니다",
       },
     },
     shortcuts: {

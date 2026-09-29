@@ -2283,7 +2283,7 @@ export const es: TranslationResources = {
         title: "Accesibilidad",
         colorblindMode: "Modo daltónico",
         colorblindModeHint:
-          "Resaltado de diferencias más intenso, con las líneas eliminadas más oscuras que las añadidas",
+          "Verde y rojo intensos que también difieren en brillo, para diffs, comprobaciones y estados",
       },
     },
     shortcuts: {

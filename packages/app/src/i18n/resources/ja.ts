@@ -2248,7 +2248,7 @@ export const ja: TranslationResources = {
       accessibility: {
         title: "アクセシビリティ",
         colorblindMode: "色覚サポートモード",
-        colorblindModeHint: "差分のハイライトを強くし、削除行を追加行より濃く表示します",
+        colorblindModeHint: "差分・チェック・ステータスで、明るさも異なる鮮やかな緑と赤を使います",
       },
     },
     shortcuts: {
