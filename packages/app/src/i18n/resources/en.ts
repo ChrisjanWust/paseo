@@ -1155,6 +1155,7 @@ export const en = {
         "6h": "Past 6 hours",
         "12h": "Past 12 hours",
         "1d": "Past day",
+        "2d": "Past 2 days",
         "7d": "Past 7 days",
       },
     },

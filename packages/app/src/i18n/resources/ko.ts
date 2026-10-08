@@ -1154,6 +1154,7 @@ export const ko: TranslationResources = {
         "6h": "최근 6시간",
         "12h": "최근 12시간",
         "1d": "최근 1일",
+        "2d": "최근 2일",
         "7d": "최근 7일",
       },
     },

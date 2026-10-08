@@ -7,6 +7,7 @@ const RECENCY_WINDOW_MS: Record<Exclude<SidebarRecencyWindow, "all">, number> = 
   "6h": 6 * HOUR_MS,
   "12h": 12 * HOUR_MS,
   "1d": 24 * HOUR_MS,
+  "2d": 2 * 24 * HOUR_MS,
   "7d": 7 * 24 * HOUR_MS,
 };
 

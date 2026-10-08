@@ -1173,6 +1173,7 @@ export const ptBR: TranslationResources = {
         "6h": "Últimas 6 horas",
         "12h": "Últimas 12 horas",
         "1d": "Último dia",
+        "2d": "Últimos 2 dias",
         "7d": "Últimos 7 dias",
       },
     },

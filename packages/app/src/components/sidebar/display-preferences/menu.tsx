@@ -155,6 +155,7 @@ const RECENCY_WINDOW_ICONS: Record<SidebarRecencyWindow, OptionIcon> = {
   "6h": ThemedClock,
   "12h": ThemedClock,
   "1d": ThemedClock,
+  "2d": ThemedClock,
   "7d": ThemedClock,
 };
 
@@ -196,6 +197,7 @@ const RECENCY_WINDOW_LABEL_KEYS: Record<SidebarRecencyWindow, string> = {
   "6h": "sidebar.display.recencyFilter.6h",
   "12h": "sidebar.display.recencyFilter.12h",
   "1d": "sidebar.display.recencyFilter.1d",
+  "2d": "sidebar.display.recencyFilter.2d",
   "7d": "sidebar.display.recencyFilter.7d",
 };
 

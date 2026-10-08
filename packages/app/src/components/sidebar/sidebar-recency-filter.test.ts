@@ -68,6 +68,12 @@ describe("filterWorkspacesByRecency", () => {
     expect(visibleIds(workspaces, "6h")).toEqual(["one-hour"]);
     expect(visibleIds(workspaces, "12h")).toEqual(["one-hour", "eight-hours"]);
     expect(visibleIds(workspaces, "1d")).toEqual(["one-hour", "eight-hours", "eighteen-hours"]);
+    expect(visibleIds(workspaces, "2d")).toEqual([
+      "one-hour",
+      "eight-hours",
+      "eighteen-hours",
+      "thirty-hours",
+    ]);
     expect(visibleIds(workspaces, "7d")).toEqual([
       "one-hour",
       "eight-hours",

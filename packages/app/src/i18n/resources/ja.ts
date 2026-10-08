@@ -1160,6 +1160,7 @@ export const ja: TranslationResources = {
         "6h": "過去6時間",
         "12h": "過去12時間",
         "1d": "過去1日",
+        "2d": "過去2日",
         "7d": "過去7日",
       },
     },

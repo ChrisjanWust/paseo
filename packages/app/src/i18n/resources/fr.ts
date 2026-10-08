@@ -1182,6 +1182,7 @@ export const fr: TranslationResources = {
         "6h": "6 dernières heures",
         "12h": "12 dernières heures",
         "1d": "Dernier jour",
+        "2d": "2 derniers jours",
         "7d": "7 derniers jours",
       },
     },

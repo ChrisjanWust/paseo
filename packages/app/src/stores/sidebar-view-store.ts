@@ -20,13 +20,14 @@ export type SidebarProjectSortMode = "manual" | "recent";
 export type SidebarWorkspaceSortMode = "manual" | "recent";
 
 /** How far back a workspace's last activity may be for the sidebar to show it. */
-export type SidebarRecencyWindow = "all" | "6h" | "12h" | "1d" | "7d";
+export type SidebarRecencyWindow = "all" | "6h" | "12h" | "1d" | "2d" | "7d";
 
 export const SIDEBAR_RECENCY_WINDOWS: readonly SidebarRecencyWindow[] = [
   "all",
   "6h",
   "12h",
   "1d",
+  "2d",
   "7d",
 ];
 
@@ -114,7 +115,7 @@ interface SidebarViewPersistedState {
 const PersistedSidebarGroupModeSchema = z.enum(["project", "status", "label"]);
 const PersistedSidebarProjectSortSchema = z.enum(["manual", "recent"]);
 const PersistedSidebarWorkspaceSortSchema = z.enum(["manual", "recent"]);
-const PersistedSidebarRecencyWindowSchema = z.enum(["all", "6h", "12h", "1d", "7d"]);
+const PersistedSidebarRecencyWindowSchema = z.enum(["all", "6h", "12h", "1d", "2d", "7d"]);
 const SidebarLabelFilterSchema = z.object({
   labels: z.array(z.string()),
 });

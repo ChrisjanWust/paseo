@@ -1183,6 +1183,7 @@ export const es: TranslationResources = {
         "6h": "Últimas 6 horas",
         "12h": "Últimas 12 horas",
         "1d": "Último día",
+        "2d": "Últimos 2 días",
         "7d": "Últimos 7 días",
       },
     },

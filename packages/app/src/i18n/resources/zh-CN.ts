@@ -1139,6 +1139,7 @@ export const zhCN: TranslationResources = {
         "6h": "过去 6 小时",
         "12h": "过去 12 小时",
         "1d": "过去 1 天",
+        "2d": "过去 2 天",
         "7d": "过去 7 天",
       },
     },
