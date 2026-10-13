@@ -162,6 +162,16 @@ describe("plugin theme palettes", () => {
     expect(theme.colors.statusDanger).toBe(lightTheme.colors.statusDanger);
     expect(theme.colors.syntax).toEqual(lightTheme.colors.syntax);
   });
+
+  // The light builder selects sidebar rows with surface4, which a plugin palette fills with its
+  // ring color. Ring is a text-strength tone, so the selected row stays one step past the border.
+  it("selects light sidebar rows one step past the border, not with the ring", () => {
+    const theme = collectPluginThemes([installed("host-a", [LATTE])], new Set(["host-a"]))[0].theme;
+
+    expect(theme.colors.surfaceSidebarHover).toBe("#ccd0da");
+    expect(theme.colors.surfaceSidebarSelected).toBe("#bdc1cc");
+    expect(theme.colors.surface4).toBe("#9ca0b0");
+  });
 });
 
 const SUPPORTED = new Set(["host-a", "host-b", "host-z"]);
