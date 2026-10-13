@@ -117,7 +117,7 @@ function mixHex(from: string, to: string, amount: number): string {
 // The light builder selects sidebar rows with surface4, and a plugin palette has only `ring` to
 // fill that slot. Ring is a text-strength tone, so a selected row painted with it hides its own
 // label. Step one shade past the border toward the foreground instead.
-const LIGHT_SIDEBAR_SELECTED_STEP = 0.12;
+const LIGHT_SIDEBAR_SELECTED_STEP = 0.05;
 
 function buildLightPluginTheme(contribution: PluginThemeContribution): Theme {
   const colors = contribution.colors;

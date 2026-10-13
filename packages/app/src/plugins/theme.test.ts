@@ -169,7 +169,7 @@ describe("plugin theme palettes", () => {
     const theme = collectPluginThemes([installed("host-a", [LATTE])], new Set(["host-a"]))[0].theme;
 
     expect(theme.colors.surfaceSidebarHover).toBe("#ccd0da");
-    expect(theme.colors.surfaceSidebarSelected).toBe("#bdc1cc");
+    expect(theme.colors.surfaceSidebarSelected).toBe("#c6cad4");
     expect(theme.colors.surface4).toBe("#9ca0b0");
   });
 });
