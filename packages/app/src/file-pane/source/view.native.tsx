@@ -1,10 +1,23 @@
-import { useEffect, useMemo, useRef } from "react";
-import { FlatList, Text, View, type ListRenderItem } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  FlatList,
+  StyleSheet as RNStyleSheet,
+  Text,
+  View,
+  type ListRenderItem,
+} from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from "react-native-reanimated";
 import { StyleSheet } from "react-native-unistyles";
 import { highlightCode, type HighlightToken } from "@getpaseo/highlight";
 import { syntaxTokenStyleFor } from "@/styles/syntax-token-styles";
 import type { WorkspaceFileLocation } from "@/workspace/file-open";
 import type { EditorVisualTheme } from "../editor/extensions.web";
+import { isTargetLine, resolveTargetLineRange, TARGET_LINE_FLASH_MS } from "../target-line";
 import { selectSourcePresentation } from "./presentation";
 
 interface FileSourceViewProps {
@@ -69,6 +82,15 @@ function VirtualizedSource({
       .split("\n")
       .map((text, index) => ({ number: index + 1, tokens: [{ text, style: null }] }));
   }, [content, filename, presentation]);
+  const targetRange = useMemo(
+    () =>
+      resolveTargetLineRange(
+        { lineStart: location.lineStart, lineEnd: location.lineEnd },
+        lines.length,
+      ),
+    [lines.length, location.lineEnd, location.lineStart],
+  );
+  const [flashing, setFlashing] = useState(false);
   useEffect(() => {
     if (!location.lineStart) return;
     listRef.current?.scrollToIndex({
@@ -77,22 +99,51 @@ function VirtualizedSource({
       viewPosition: 0.5,
     });
   }, [lines.length, location.lineStart, navigationRevision]);
+  useEffect(() => {
+    if (!location.lineStart) return;
+    setFlashing(true);
+    const timer = setTimeout(() => setFlashing(false), TARGET_LINE_FLASH_MS);
+    return () => clearTimeout(timer);
+  }, [location.lineEnd, location.lineStart, navigationRevision]);
+  const renderItem = useCallback<ListRenderItem<SourceLine>>(
+    ({ item }) => {
+      const targeted = isTargetLine(targetRange, item.number);
+      return (
+        <SourceLineView
+          line={item}
+          targeted={targeted}
+          flashKey={targeted && flashing ? navigationRevision : null}
+        />
+      );
+    },
+    [flashing, navigationRevision, targetRange],
+  );
   return (
     <FlatList
       ref={listRef}
       data={lines}
+      extraData={renderItem}
       keyExtractor={sourceLineKey}
       initialNumToRender={24}
       windowSize={9}
       getItemLayout={sourceLineLayout}
-      renderItem={renderSourceLine}
+      renderItem={renderItem}
     />
   );
 }
 
-function SourceLineView({ line }: { line: SourceLine }) {
+function SourceLineView({
+  line,
+  targeted,
+  flashKey,
+}: {
+  line: SourceLine;
+  targeted: boolean;
+  flashKey: number | null;
+}) {
   return (
-    <View style={styles.line}>
+    <View style={[styles.line, targeted && styles.targetLine]}>
+      {flashKey === null ? null : <TargetLineFlash key={flashKey} />}
       <Text style={styles.gutter}>{line.number}</Text>
       <Text selectable style={styles.text}>
         {line.tokens.map((token) => (
@@ -113,7 +164,25 @@ function sourceLineLayout(_data: ArrayLike<SourceLine> | null | undefined, index
   return { length: 20, offset: index * 20, index };
 }
 
-const renderSourceLine: ListRenderItem<SourceLine> = ({ item }) => <SourceLineView line={item} />;
+// Reanimated and Unistyles must not drive the same node, so the animated
+// wrapper stays on plain RN styles and the themed color lives on its child.
+function TargetLineFlash() {
+  const opacity = useSharedValue(1);
+  useEffect(() => {
+    opacity.value = withDelay(
+      TARGET_LINE_FLASH_MS * 0.3,
+      withTiming(0, { duration: TARGET_LINE_FLASH_MS * 0.7 }),
+    );
+  }, [opacity]);
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return (
+    <Animated.View pointerEvents="none" style={[flashStyles.fill, animatedStyle]}>
+      <View style={styles.targetLineFlash} />
+    </Animated.View>
+  );
+}
+
+const flashStyles = RNStyleSheet.create({ fill: RNStyleSheet.absoluteFillObject });
 
 const styles = StyleSheet.create((theme) => ({
   unsupported: {
@@ -124,6 +193,9 @@ const styles = StyleSheet.create((theme) => ({
   },
   unsupportedText: { color: theme.colors.foregroundMuted, textAlign: "center" },
   line: { flexDirection: "row", minHeight: theme.fontSize.code * 1.45 },
+  // surface2/surface3 sit just above surface0: lighter on dark themes, darker on light ones.
+  targetLine: { backgroundColor: theme.colors.surface2 },
+  targetLineFlash: { flex: 1, backgroundColor: theme.colors.surface3 },
   gutter: {
     width: 56,
     paddingRight: theme.spacing[3],

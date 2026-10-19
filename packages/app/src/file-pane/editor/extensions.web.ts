@@ -13,6 +13,7 @@ import {
   lineNumbers,
 } from "@codemirror/view";
 import { createCodeMirrorHighlightStyle, type HighlightStyle } from "@getpaseo/highlight";
+import { TARGET_LINE_FLASH_MS } from "../target-line";
 
 export interface EditorVisualTheme {
   colorScheme: "light" | "dark";
@@ -77,6 +78,18 @@ export function editorTheme(theme: EditorVisualTheme) {
         },
         ".cm-activeLine": { backgroundColor: "transparent" },
         ".cm-activeLineGutter": { backgroundColor: "transparent", color: theme.foreground },
+        // Tinting with the foreground lightens lines on dark themes and darkens them
+        // on light ones. It stays translucent so the selection layer beneath shows.
+        ".cm-targetLine": {
+          backgroundColor: `color-mix(in srgb, ${theme.foreground} 7%, transparent)`,
+        },
+        ".cm-targetLine-flash": {
+          "--cm-target-line-flash": `color-mix(in srgb, ${theme.foreground} 20%, transparent)`,
+          animation: `cm-target-line-flash ${TARGET_LINE_FLASH_MS}ms ease-out`,
+        },
+        "@keyframes cm-target-line-flash": {
+          "0%, 30%": { backgroundColor: "var(--cm-target-line-flash)" },
+        },
         "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground": {
           backgroundColor: theme.selection,
         },

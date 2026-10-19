@@ -6,6 +6,8 @@ import { getLanguageForFile } from "@getpaseo/highlight";
 import type { WorkspaceFileLocation } from "@/workspace/file-open";
 import type { EditorVisualTheme } from "../editor/extensions.web";
 import { editorTheme } from "../editor/extensions.web";
+import { targetLineEffect, targetLineExtension } from "../editor/target-line.web";
+import { resolveTargetLineRange } from "../target-line";
 import { selectSourcePresentation, type SourcePresentation } from "./presentation";
 
 interface FileSourceViewProps {
@@ -74,6 +76,7 @@ function ReadonlyCodeMirror({
         doc: values.content,
         extensions: [
           find.extension,
+          targetLineExtension,
           EditorState.readOnly.of(true),
           EditorView.contentAttributes.of({
             tabindex: "0",
@@ -111,11 +114,18 @@ function ReadonlyCodeMirror({
 
   useEffect(() => {
     const view = viewRef.current;
-    if (!view || !location.lineStart) return;
-    const line = Math.min(location.lineStart, view.state.doc.lines);
-    const from = view.state.doc.line(line).from;
-    view.dispatch({ effects: EditorView.scrollIntoView(from, { y: "center" }) });
-  }, [location.lineStart, navigationRevision]);
+    if (!view) return;
+    const target = { lineStart: location.lineStart, lineEnd: location.lineEnd };
+    const range = resolveTargetLineRange(target, view.state.doc.lines);
+    if (!range) {
+      view.dispatch({ effects: targetLineEffect(target) });
+      return;
+    }
+    const from = view.state.doc.line(range.start).from;
+    view.dispatch({
+      effects: [targetLineEffect(target), EditorView.scrollIntoView(from, { y: "center" })],
+    });
+  }, [location.lineEnd, location.lineStart, navigationRevision]);
 
   return (
     <div style={FRAME_STYLE}>
