@@ -7,7 +7,9 @@ import { getCM, vim } from "@replit/codemirror-vim";
 import { isRenderedMarkdownFile } from "@/components/file-pane-render-mode";
 import type { WorkspaceFileLocation } from "@/workspace/file-open";
 import type { FileEditorModel } from "./model";
+import { resolveTargetLineRange } from "../target-line";
 import { editorBaseExtensions, editorTheme, type EditorVisualTheme } from "./extensions.web";
+import { targetLineEffect, targetLineExtension } from "./target-line.web";
 
 interface FileEditorViewProps {
   model: FileEditorModel;
@@ -57,6 +59,7 @@ export function FileEditorView({
         extensions: [
           vimCompartment.of(values.vimEnabled ? vim() : []),
           find.extension,
+          targetLineExtension,
           ...editorBaseExtensions(() => void values.model.save()),
           languageCompartment.of(getLanguageForFile(values.filename)?.extension ?? []),
           wrappingCompartment.of(wrappingForFile(values.filename)),
@@ -101,14 +104,18 @@ export function FileEditorView({
 
   useEffect(() => {
     const view = viewRef.current;
-    if (!view || !location.lineStart) return;
-    const lineStart = Math.min(location.lineStart, view.state.doc.lines);
-    const lineEnd = Math.min(location.lineEnd ?? lineStart, view.state.doc.lines);
-    const from = view.state.doc.line(lineStart).from;
-    const to = view.state.doc.line(Math.max(lineStart, lineEnd)).to;
+    if (!view) return;
+    const target = { lineStart: location.lineStart, lineEnd: location.lineEnd };
+    const range = resolveTargetLineRange(target, view.state.doc.lines);
+    if (!range) {
+      view.dispatch({ effects: targetLineEffect(target) });
+      return;
+    }
+    const from = view.state.doc.line(range.start).from;
+    const to = view.state.doc.line(range.end).to;
     view.dispatch({
-      selection: { anchor: from, head: lineEnd > lineStart ? to : from },
-      effects: EditorView.scrollIntoView(from, { y: "center" }),
+      selection: { anchor: from, head: range.end > range.start ? to : from },
+      effects: [targetLineEffect(target), EditorView.scrollIntoView(from, { y: "center" })],
     });
   }, [location.lineEnd, location.lineStart, navigationRevision]);
 
