@@ -137,7 +137,7 @@ describe("buildProjects", () => {
   });
 });
 
-describe("workspace change request number", () => {
+describe("workspace change request", () => {
   function summarize(overrides: Partial<WorkspaceDescriptor>) {
     const result = buildProjects({
       hosts: [
@@ -150,7 +150,7 @@ describe("workspace change request number", () => {
         },
       ],
     });
-    return result.projects[0]?.hosts[0]?.workspaces[0]?.changeRequestNumber;
+    return result.projects[0]?.hosts[0]?.workspaces[0]?.changeRequest;
   }
 
   const pullRequest = {
@@ -170,12 +170,25 @@ describe("workspace change request number", () => {
           pullRequest: { ...pullRequest, number: 42, url: "https://example.test/pull/999" },
         },
         forge: "github",
-      }),
+      })?.number,
     ).toBe(42);
   });
 
   test("falls back to the url when the daemon omits the number", () => {
-    expect(summarize({ githubRuntime: { pullRequest }, forge: "github" })).toBe(42);
+    expect(summarize({ githubRuntime: { pullRequest }, forge: "github" })).toEqual({
+      number: 42,
+      state: "open",
+      forge: "github",
+    });
+  });
+
+  test("carries the state so a merged change request badges as merged", () => {
+    expect(
+      summarize({
+        githubRuntime: { pullRequest: { ...pullRequest, number: 42, isMerged: true } },
+        forge: "github",
+      })?.state,
+    ).toBe("merged");
   });
 
   test("parses a gitlab merge request url", () => {
@@ -186,11 +199,13 @@ describe("workspace change request number", () => {
         },
         forge: "gitlab",
       }),
-    ).toBe(7);
+    ).toEqual({ number: 7, state: "open", forge: "gitlab" });
   });
 
   test("resolves the number when an old daemon omits the forge", () => {
-    expect(summarize({ githubRuntime: { pullRequest: { ...pullRequest, number: 42 } } })).toBe(42);
+    expect(
+      summarize({ githubRuntime: { pullRequest: { ...pullRequest, number: 42 } } }),
+    ).toMatchObject({ number: 42, forge: "github" });
   });
 
   test("is null when the workspace has no pull request", () => {

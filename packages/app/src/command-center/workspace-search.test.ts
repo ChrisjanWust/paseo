@@ -13,7 +13,10 @@ function workspace(input: {
     id: input.id,
     title: input.title ?? input.id,
     subtitle: input.subtitle ?? "",
-    changeRequestNumber: input.changeRequestNumber ?? null,
+    changeRequest:
+      input.changeRequestNumber == null
+        ? null
+        : { number: input.changeRequestNumber, state: "open", forge: "github" },
     run: () => undefined,
   };
 }
