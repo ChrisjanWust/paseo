@@ -83,11 +83,15 @@ export function editorTheme(theme: EditorVisualTheme) {
         ".cm-targetLine": {
           backgroundColor: `color-mix(in srgb, ${theme.foreground} 7%, transparent)`,
         },
-        ".cm-targetLine-flash": {
+        ".cm-targetLine-flash, .cm-targetLine-flash-alternate": {
           "--cm-target-line-flash": `color-mix(in srgb, ${theme.foreground} 20%, transparent)`,
           animation: `cm-target-line-flash ${TARGET_LINE_FLASH_MS}ms ease-out`,
         },
+        ".cm-targetLine-flash-alternate": { animationName: "cm-target-line-flash-alternate" },
         "@keyframes cm-target-line-flash": {
+          "0%, 30%": { backgroundColor: "var(--cm-target-line-flash)" },
+        },
+        "@keyframes cm-target-line-flash-alternate": {
           "0%, 30%": { backgroundColor: "var(--cm-target-line-flash)" },
         },
         "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground": {

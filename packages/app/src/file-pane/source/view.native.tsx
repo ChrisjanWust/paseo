@@ -100,8 +100,8 @@ function VirtualizedSource({
     });
   }, [lines.length, location.lineStart, navigationRevision]);
   useEffect(() => {
+    setFlashing(Boolean(location.lineStart));
     if (!location.lineStart) return;
-    setFlashing(true);
     const timer = setTimeout(() => setFlashing(false), TARGET_LINE_FLASH_MS);
     return () => clearTimeout(timer);
   }, [location.lineEnd, location.lineStart, navigationRevision]);
@@ -122,7 +122,6 @@ function VirtualizedSource({
     <FlatList
       ref={listRef}
       data={lines}
-      extraData={renderItem}
       keyExtractor={sourceLineKey}
       initialNumToRender={24}
       windowSize={9}
