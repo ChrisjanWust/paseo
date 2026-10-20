@@ -12,6 +12,12 @@ export interface PrHint {
   reviewDecision?: "approved" | "changes_requested" | "pending" | null;
 }
 
+/**
+ * The part of a change request a compact badge draws: its number, its state, and the forge that
+ * decides the number's prefix. Lighter than a `PrHint` because a badge needs no link or CI.
+ */
+export type PrBadgeModel = Pick<PrHint, "number" | "state" | "forge">;
+
 export interface PrHintCheck extends PresentableCheck {
   name: string;
   url: string | null;
@@ -44,6 +50,32 @@ function parsePullRequestNumber(url: string): number | null {
   }
 }
 
+function resolvePrState(status: PrStatusLike): PrHint["state"] {
+  if (status.isMerged || status.state === "merged") return "merged";
+  if (status.state === "open") return "open";
+  return "closed";
+}
+
+/**
+ * Resolve a badge for a change request.
+ *
+ * The wire carries the number directly, so prefer it. Parsing the URL is only the fallback: it
+ * yields null for a noncanonical or absent URL even when the daemon sent a perfectly good number.
+ */
+export function selectPrBadgeFromStatus(
+  status: (PrStatusLike & { number?: number | null }) | null | undefined,
+  forge?: string | null,
+): PrBadgeModel | null {
+  if (!status) return null;
+  const number = status.number ?? (status.url ? parsePullRequestNumber(status.url) : null);
+  if (number === null) return null;
+  return {
+    number,
+    state: resolvePrState(status),
+    forge: normalizeForge(forge ?? status.forge),
+  };
+}
+
 export function selectPrHintFromStatus(
   status: PrStatusLike | null | undefined,
   forge?: string | null,
@@ -57,15 +89,10 @@ export function selectPrHintFromStatus(
     return null;
   }
 
-  let state: "merged" | "open" | "closed";
-  if (status.isMerged || status.state === "merged") state = "merged";
-  else if (status.state === "open") state = "open";
-  else state = "closed";
-
   return {
     url: status.url,
     number,
-    state,
+    state: resolvePrState(status),
     forge: normalizeForge(forge ?? status.forge),
     checks: status.checks,
     checksStatus: status.checksStatus as PrHint["checksStatus"],

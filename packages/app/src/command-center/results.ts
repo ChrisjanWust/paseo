@@ -1,3 +1,4 @@
+import type { PrBadgeModel } from "@/git/pr-hint";
 import type { AggregatedAgent } from "@/hooks/use-aggregated-agents";
 import {
   compareMatchScores,
@@ -48,8 +49,8 @@ export interface CommandCenterWorkspaceResult {
   id: string;
   title: string;
   subtitle: string;
-  /** PR/MR number backing this workspace, so a number query can match it exactly. */
-  changeRequestNumber: number | null;
+  /** PR/MR backing this workspace: a number query matches it exactly, and the row badges it. */
+  changeRequest: PrBadgeModel | null;
   run(): void;
 }
 
@@ -59,6 +60,8 @@ export interface CommandCenterAgentResult {
   agent: AggregatedAgent;
   title: string;
   subtitle: string;
+  /** PR/MR of the agent's workspace, badged on the row. */
+  changeRequest: PrBadgeModel | null;
   run(): void;
 }
 

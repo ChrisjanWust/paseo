@@ -62,7 +62,7 @@ export function filterAndRankWorkspaces(
   for (const workspace of workspaces) {
     const score = scoreSearchFields(query, searchFields(workspace));
     const changeRequestHit =
-      changeRequestNumber !== null && workspace.changeRequestNumber === changeRequestNumber;
+      changeRequestNumber !== null && workspace.changeRequest?.number === changeRequestNumber;
     if (score || changeRequestHit) matches.push({ workspace, score, changeRequestHit });
   }
   matches.sort((left, right) => compareScoredWorkspaces(left, right, tiebreak));

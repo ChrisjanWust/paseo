@@ -2,7 +2,7 @@ import { Fragment, useCallback, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View, type GestureResponderEvent } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
-import { ExternalLink, Folder, GitBranch, Globe } from "lucide-react-native";
+import { Folder, GitBranch, Globe } from "lucide-react-native";
 import {
   workspaceLabelKey,
   type WorkspaceLabelDefinition,
@@ -11,11 +11,13 @@ import type { HostBadgeModel } from "@/hosts/appearance";
 import { HostBadge, HOST_BADGE_ICON_SIZE } from "@/hosts/host-badge";
 import { WorkspaceLabelChip, WORKSPACE_LABEL_CHIP_INSET } from "@/workspace-labels/chip";
 import type { PrHint } from "@/git/pr-hint";
-import { getForgePresentation, normalizeForge } from "@/git/forge";
 import { openExternalUrl } from "@/utils/open-external-url";
 import { useSidebarMetaPreferences } from "@/components/sidebar/display-preferences/model";
 import type { Theme } from "@/styles/theme";
-import { PullRequestStateIcon } from "@/git/pull-request-state-icon";
+import {
+  PullRequestBadgeContent,
+  usePullRequestBadgeAccessibilityLabel,
+} from "@/git/pull-request-badge";
 import { CheckIndicator } from "./check-indicator";
 import type { CheckSummary, CheckSummaryState } from "./check-summary";
 import { selectMetaRowItems, type MetaRowItem } from "./meta-items";
@@ -34,7 +36,6 @@ export {
  */
 const META_ICON_SIZE = HOST_BADGE_ICON_SIZE;
 
-const ThemedExternalLink = withUnistyles(ExternalLink);
 const ThemedFolder = withUnistyles(Folder);
 const ThemedGitBranch = withUnistyles(GitBranch);
 const ThemedGlobe = withUnistyles(Globe);
@@ -42,7 +43,6 @@ const ThemedGlobe = withUnistyles(Globe);
 /** Stable identity so a row without labels doesn't re-select its items on every render. */
 const EMPTY_LABELS: readonly WorkspaceLabelDefinition[] = [];
 
-const foregroundMapping = (theme: Theme) => ({ color: theme.colors.foreground });
 const mutedMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 const dangerMapping = (theme: Theme) => ({ color: theme.colors.statusDanger });
 
@@ -186,9 +186,8 @@ function LabelsItem({
  * size, so the swap can't move the target out from under the cursor.
  */
 function PullRequestItem({ hint }: { hint: PrHint }) {
-  const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
-  const presentation = getForgePresentation(normalizeForge(hint.forge));
+  const accessibilityLabel = usePullRequestBadgeAccessibilityLabel(hint);
 
   const handlePress = useCallback(
     (event: GestureResponderEvent) => {
@@ -204,10 +203,7 @@ function PullRequestItem({ hint }: { hint: PrHint }) {
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={t("workspace.git.pr.accessibility.pullRequest", {
-        number: hint.number,
-        context: presentation.changeRequestContext,
-      })}
+      accessibilityLabel={accessibilityLabel}
       hitSlop={4}
       onPressIn={handlePressIn}
       onPress={handlePress}
@@ -215,17 +211,7 @@ function PullRequestItem({ hint }: { hint: PrHint }) {
       onHoverOut={handleHoverOut}
       style={pressableItemStyle}
     >
-      {isHovered ? (
-        <ThemedExternalLink size={META_ICON_SIZE} uniProps={foregroundMapping} />
-      ) : (
-        <PullRequestStateIcon state={hint.state} size={META_ICON_SIZE} />
-      )}
-      <Text style={isHovered ? styles.prTextHovered : styles.prText} numberOfLines={1}>
-        {hint.number}
-        {/* An open change request is the unremarkable case and says nothing extra; a merged
-            or closed one is why the row still looks like it has work in it. */}
-        {hint.state === "open" ? "" : ` ${t(PR_STATE_LABEL_KEYS[hint.state])}`}
-      </Text>
+      <PullRequestBadgeContent badge={hint} iconSize={META_ICON_SIZE} hovered={isHovered} />
     </Pressable>
   );
 }
@@ -299,11 +285,6 @@ function ServiceItem({ summary }: { summary: WorkspaceServiceSummary }) {
 }
 
 const successMapping = (theme: Theme) => ({ color: theme.colors.statusSuccess });
-
-const PR_STATE_LABEL_KEYS = {
-  merged: "workspace.git.pr.states.merged",
-  closed: "workspace.git.pr.states.closed",
-} as const;
 
 function pressableItemStyle({ pressed }: { pressed: boolean }) {
   return [styles.item, pressed && styles.itemPressed];
@@ -381,18 +362,6 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     lineHeight: 16,
     flexShrink: 1,
-  },
-  prText: {
-    color: theme.colors.foregroundMuted,
-    fontSize: theme.fontSize.sm,
-    lineHeight: 16,
-    flexShrink: 0,
-  },
-  prTextHovered: {
-    color: theme.colors.foreground,
-    fontSize: theme.fontSize.sm,
-    lineHeight: 16,
-    flexShrink: 0,
   },
   // Matches the indicator — see COLOR_MAPPINGS in check-indicator.tsx.
   checksTextPassed: {

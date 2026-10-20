@@ -107,7 +107,7 @@ function workspace(id: string, title = id, subtitle = "host"): CommandCenterWork
     id,
     title,
     subtitle,
-    changeRequestNumber: null,
+    changeRequest: null,
     run: () => undefined,
   };
 }

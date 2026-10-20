@@ -32,6 +32,12 @@ import {
   useIsolatedBottomSheetVisibility,
 } from "@/components/ui/isolated-bottom-sheet-modal";
 import { useIsCompactFormFactor } from "@/constants/layout";
+import type { PrBadgeModel } from "@/git/pr-hint";
+import {
+  PullRequestBadgeContent,
+  usePullRequestBadgeAccessibilityLabel,
+} from "@/git/pull-request-badge";
+import { HOST_BADGE_ICON_SIZE } from "@/hosts/host-badge";
 import { isNative, isWeb } from "@/constants/platform";
 import { useAggregatedAgents, type AggregatedAgent } from "@/hooks/use-aggregated-agents";
 import { useProjects } from "@/hooks/use-projects";
@@ -155,7 +161,7 @@ function useBuiltInRows(open: boolean): {
               project.projectName,
               workspace.currentBranch,
             ]),
-            changeRequestNumber: workspace.changeRequestNumber,
+            changeRequest: workspace.changeRequest,
             run: () => {
               clearCommandCenterFocusRestoreElement();
               navigateToWorkspace({ serverId: host.serverId, workspaceId: workspace.id });
@@ -165,13 +171,13 @@ function useBuiltInRows(open: boolean): {
       }
     }
     allWorkspaces.sort(compareWorkspacesByTitle);
-    const workspaceTitleByKey = new Map(
-      allWorkspaces.map((workspace) => [workspace.id.slice("workspace:".length), workspace.title]),
+    const workspaceByKey = new Map(
+      allWorkspaces.map((workspace) => [workspace.id.slice("workspace:".length), workspace]),
     );
     const agentRows = agents
       .map<CommandCenterAgentResult>((agent) => {
-        const workspaceTitle = agent.workspaceId
-          ? workspaceTitleByKey.get(`${agent.serverId}:${agent.workspaceId}`)
+        const workspace = agent.workspaceId
+          ? workspaceByKey.get(`${agent.serverId}:${agent.workspaceId}`)
           : undefined;
         return {
           kind: "agent",
@@ -180,9 +186,10 @@ function useBuiltInRows(open: boolean): {
           title: agent.title || t("shell.commandCenter.newAgent"),
           subtitle: joinSubtitleParts([
             showHost ? agent.serverLabel : null,
-            workspaceTitle ?? shortenPath(agent.cwd),
+            workspace?.title ?? shortenPath(agent.cwd),
             formatTimeAgo(agent.lastActivityAt),
           ]),
+          changeRequest: workspace?.changeRequest ?? null,
           run: () => {
             clearCommandCenterFocusRestoreElement();
             navigateToAgent({ serverId: agent.serverId, agentId: agent.id });
@@ -433,6 +440,55 @@ const ResultRow = memo(function ResultRow({ result, active, onSelect }: ResultRo
   );
 });
 
+/**
+ * The subtitle line, with the change request badged after it the way the sidebar's meta row
+ * draws it. The text truncates first so the badge always survives a narrow panel. The badge is
+ * not a link here: the whole row is the press target and it opens the workspace.
+ */
+function ResultSubtitle({
+  text,
+  changeRequest,
+  testID,
+}: {
+  text: string;
+  changeRequest: PrBadgeModel | null;
+  testID: string;
+}) {
+  if (!changeRequest) {
+    return (
+      <Text style={styles.subtitle} numberOfLines={1} testID={testID}>
+        {text}
+      </Text>
+    );
+  }
+  return (
+    <View style={styles.subtitleRow}>
+      {text ? (
+        <>
+          <Text style={styles.subtitleText} numberOfLines={1} testID={testID}>
+            {text}
+          </Text>
+          <Text style={styles.subtitleSeparator}>·</Text>
+        </>
+      ) : null}
+      <ChangeRequestBadge badge={changeRequest} />
+    </View>
+  );
+}
+
+function ChangeRequestBadge({ badge }: { badge: PrBadgeModel }) {
+  const accessibilityLabel = usePullRequestBadgeAccessibilityLabel(badge);
+  return (
+    <View
+      style={styles.changeRequestBadge}
+      accessibilityLabel={accessibilityLabel}
+      testID={`command-center-change-request-${badge.number}`}
+    >
+      <PullRequestBadgeContent badge={badge} iconSize={HOST_BADGE_ICON_SIZE} showNumberPrefix />
+    </View>
+  );
+}
+
 function ResultContent({ result }: { result: CommandCenterResult }) {
   if (result.kind === "file") {
     return (
@@ -472,9 +528,11 @@ function ResultContent({ result }: { result: CommandCenterResult }) {
             <Text style={styles.title} numberOfLines={1}>
               {result.title}
             </Text>
-            <Text style={styles.subtitle} numberOfLines={1} testID="command-center-agent-subtitle">
-              {result.subtitle}
-            </Text>
+            <ResultSubtitle
+              text={result.subtitle}
+              changeRequest={result.changeRequest}
+              testID="command-center-agent-subtitle"
+            />
           </View>
         </View>
       </View>
@@ -492,13 +550,11 @@ function ResultContent({ result }: { result: CommandCenterResult }) {
             <Text style={styles.title} numberOfLines={1}>
               {result.title}
             </Text>
-            <Text
-              style={styles.subtitle}
-              numberOfLines={1}
+            <ResultSubtitle
+              text={result.subtitle}
+              changeRequest={result.changeRequest}
               testID="command-center-workspace-subtitle"
-            >
-              {result.subtitle}
-            </Text>
+            />
           </View>
         </View>
       </View>
@@ -950,6 +1006,21 @@ const styles = StyleSheet.create((theme) => ({
   fileName: { color: theme.colors.foreground },
   filePath: { color: theme.colors.foregroundMuted },
   subtitle: { color: theme.colors.foregroundMuted, fontSize: theme.fontSize.sm, lineHeight: 16 },
+  // Spacing matches the sidebar's meta row, so the badge reads the same in both places.
+  subtitleRow: { flexDirection: "row", alignItems: "center", gap: theme.spacing[1.5], minWidth: 0 },
+  subtitleText: {
+    color: theme.colors.foregroundMuted,
+    fontSize: theme.fontSize.sm,
+    lineHeight: 16,
+    flexShrink: 1,
+  },
+  subtitleSeparator: {
+    color: theme.colors.foregroundExtraMuted,
+    fontSize: theme.fontSize.sm,
+    lineHeight: 16,
+    flexShrink: 0,
+  },
+  changeRequestBadge: { flexDirection: "row", alignItems: "center", gap: 3, flexShrink: 0 },
   iconSlot: { width: 16, height: 20, alignItems: "center", justifyContent: "center" },
   rowShortcut: { flexShrink: 0 },
   breadcrumb: {
