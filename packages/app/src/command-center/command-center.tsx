@@ -32,13 +32,10 @@ import {
   useIsolatedBottomSheetVisibility,
 } from "@/components/ui/isolated-bottom-sheet-modal";
 import { useIsCompactFormFactor } from "@/constants/layout";
-import type { PrBadgeModel } from "@/git/pr-hint";
-import {
-  PullRequestBadgeContent,
-  usePullRequestBadgeAccessibilityLabel,
-} from "@/git/pull-request-badge";
-import { HOST_BADGE_ICON_SIZE } from "@/hosts/host-badge";
 import { isNative, isWeb } from "@/constants/platform";
+import type { PrBadgeModel } from "@/git/pr-hint";
+import { PullRequestBadgeContent } from "@/git/pull-request-badge";
+import { HOST_BADGE_ICON_SIZE } from "@/hosts/host-badge";
 import { useAggregatedAgents, type AggregatedAgent } from "@/hooks/use-aggregated-agents";
 import { useProjects } from "@/hooks/use-projects";
 import {
@@ -463,28 +460,20 @@ function ResultSubtitle({
   }
   return (
     <View style={styles.subtitleRow}>
-      {text ? (
-        <>
-          <Text style={styles.subtitleText} numberOfLines={1} testID={testID}>
-            {text}
-          </Text>
-          <Text style={styles.subtitleSeparator}>·</Text>
-        </>
-      ) : null}
-      <ChangeRequestBadge badge={changeRequest} />
-    </View>
-  );
-}
-
-function ChangeRequestBadge({ badge }: { badge: PrBadgeModel }) {
-  const accessibilityLabel = usePullRequestBadgeAccessibilityLabel(badge);
-  return (
-    <View
-      style={styles.changeRequestBadge}
-      accessibilityLabel={accessibilityLabel}
-      testID={`command-center-change-request-${badge.number}`}
-    >
-      <PullRequestBadgeContent badge={badge} iconSize={HOST_BADGE_ICON_SIZE} showNumberPrefix />
+      <Text style={styles.subtitle} numberOfLines={1} testID={testID}>
+        {text}
+      </Text>
+      <Text style={styles.subtitleSeparator}>·</Text>
+      <View
+        style={styles.changeRequestBadge}
+        testID={`command-center-change-request-${changeRequest.number}`}
+      >
+        <PullRequestBadgeContent
+          badge={changeRequest}
+          iconSize={HOST_BADGE_ICON_SIZE}
+          showNumberPrefix
+        />
+      </View>
     </View>
   );
 }
@@ -1005,15 +994,14 @@ const styles = StyleSheet.create((theme) => ({
   fileLine: { flex: 1, minWidth: 0, fontSize: theme.fontSize.base, lineHeight: 20 },
   fileName: { color: theme.colors.foreground },
   filePath: { color: theme.colors.foregroundMuted },
-  subtitle: { color: theme.colors.foregroundMuted, fontSize: theme.fontSize.sm, lineHeight: 16 },
-  // Spacing matches the sidebar's meta row, so the badge reads the same in both places.
-  subtitleRow: { flexDirection: "row", alignItems: "center", gap: theme.spacing[1.5], minWidth: 0 },
-  subtitleText: {
+  subtitle: {
     color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.sm,
     lineHeight: 16,
     flexShrink: 1,
   },
+  // Spacing matches the sidebar's meta row, so the badge reads the same in both places.
+  subtitleRow: { flexDirection: "row", alignItems: "center", gap: theme.spacing[1.5], minWidth: 0 },
   subtitleSeparator: {
     color: theme.colors.foregroundExtraMuted,
     fontSize: theme.fontSize.sm,

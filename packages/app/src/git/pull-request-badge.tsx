@@ -57,15 +57,6 @@ export function PullRequestBadgeContent({
   );
 }
 
-/** Accessible name for a container drawing `PullRequestBadgeContent`. */
-export function usePullRequestBadgeAccessibilityLabel(badge: PrBadgeModel): string {
-  const { t } = useTranslation();
-  return t("workspace.git.pr.accessibility.pullRequest", {
-    number: badge.number,
-    context: getForgePresentation(normalizeForge(badge.forge)).changeRequestContext,
-  });
-}
-
 const styles = StyleSheet.create((theme) => ({
   text: {
     color: theme.colors.foregroundMuted,

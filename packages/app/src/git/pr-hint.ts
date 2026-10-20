@@ -25,6 +25,7 @@ export interface PrHintCheck extends PresentableCheck {
 
 interface PrStatusLike {
   url: string;
+  number?: number | null;
   state: string;
   isMerged: boolean;
   checks?: PrHintCheck[];
@@ -63,7 +64,7 @@ function resolvePrState(status: PrStatusLike): PrHint["state"] {
  * yields null for a noncanonical or absent URL even when the daemon sent a perfectly good number.
  */
 export function selectPrBadgeFromStatus(
-  status: (PrStatusLike & { number?: number | null }) | null | undefined,
+  status: PrStatusLike | null | undefined,
   forge?: string | null,
 ): PrBadgeModel | null {
   if (!status) return null;
@@ -80,20 +81,14 @@ export function selectPrHintFromStatus(
   status: PrStatusLike | null | undefined,
   forge?: string | null,
 ): PrHint | null {
-  if (!status?.url) {
-    return null;
-  }
-
-  const number = parsePullRequestNumber(status.url);
-  if (number === null) {
+  const badge = selectPrBadgeFromStatus(status, forge);
+  if (!badge || !status?.url) {
     return null;
   }
 
   return {
+    ...badge,
     url: status.url,
-    number,
-    state: resolvePrState(status),
-    forge: normalizeForge(forge ?? status.forge),
     checks: status.checks,
     checksStatus: status.checksStatus as PrHint["checksStatus"],
     reviewDecision: status.reviewDecision as PrHint["reviewDecision"],

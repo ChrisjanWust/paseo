@@ -11,13 +11,11 @@ import type { HostBadgeModel } from "@/hosts/appearance";
 import { HostBadge, HOST_BADGE_ICON_SIZE } from "@/hosts/host-badge";
 import { WorkspaceLabelChip, WORKSPACE_LABEL_CHIP_INSET } from "@/workspace-labels/chip";
 import type { PrHint } from "@/git/pr-hint";
+import { getForgePresentation, normalizeForge } from "@/git/forge";
 import { openExternalUrl } from "@/utils/open-external-url";
 import { useSidebarMetaPreferences } from "@/components/sidebar/display-preferences/model";
 import type { Theme } from "@/styles/theme";
-import {
-  PullRequestBadgeContent,
-  usePullRequestBadgeAccessibilityLabel,
-} from "@/git/pull-request-badge";
+import { PullRequestBadgeContent } from "@/git/pull-request-badge";
 import { CheckIndicator } from "./check-indicator";
 import type { CheckSummary, CheckSummaryState } from "./check-summary";
 import { selectMetaRowItems, type MetaRowItem } from "./meta-items";
@@ -186,8 +184,9 @@ function LabelsItem({
  * size, so the swap can't move the target out from under the cursor.
  */
 function PullRequestItem({ hint }: { hint: PrHint }) {
+  const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
-  const accessibilityLabel = usePullRequestBadgeAccessibilityLabel(hint);
+  const presentation = getForgePresentation(normalizeForge(hint.forge));
 
   const handlePress = useCallback(
     (event: GestureResponderEvent) => {
@@ -203,7 +202,10 @@ function PullRequestItem({ hint }: { hint: PrHint }) {
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={t("workspace.git.pr.accessibility.pullRequest", {
+        number: hint.number,
+        context: presentation.changeRequestContext,
+      })}
       hitSlop={4}
       onPressIn={handlePressIn}
       onPress={handlePress}
