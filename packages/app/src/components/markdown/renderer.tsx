@@ -25,7 +25,6 @@ import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { HighlightedCodeBlock } from "@/components/highlighted-code-block";
 import { MarkdownFenceBlock } from "@/components/markdown/fence";
 import { MarkdownParagraphView, MarkdownTextSpan } from "@/components/markdown-text";
-import { MarkdownTableCellText } from "@/components/markdown-text-selection";
 import { getMarkdownListMarker, getMarkdownListSpacing } from "@/utils/markdown-list";
 import { markdownNodeContainsType } from "@/utils/markdown-ast";
 import { createMarkdownParser } from "@/utils/markdown-parser";
@@ -42,6 +41,7 @@ import { resolveInlineImageSize, type InlineImageDimensions } from "./inline-ima
 import { groupMarkdownParts, type MarkdownPartGroup } from "./part-groups";
 import { colorMarkdownLinkChildren } from "./link-children";
 import { MarkdownLinkText } from "./link-text";
+import { markdownTableRules } from "./table";
 
 export type MarkdownStyles = Record<string, TextStyle & ViewStyle & { [key: string]: unknown }>;
 
@@ -673,16 +673,7 @@ export function createSharedMarkdownRules(): RenderRules {
         </View>
       );
     },
-    th: (node: ASTNode, children: ReactNode[], _parent: ASTNode[], styles: MarkdownStyles) => (
-      <MarkdownTableCellText key={node.key}>
-        <View style={styles._VIEW_SAFE_th}>{children}</View>
-      </MarkdownTableCellText>
-    ),
-    td: (node: ASTNode, children: ReactNode[], _parent: ASTNode[], styles: MarkdownStyles) => (
-      <MarkdownTableCellText key={node.key}>
-        <View style={styles._VIEW_SAFE_td}>{children}</View>
-      </MarkdownTableCellText>
-    ),
+    ...markdownTableRules,
     paragraph: (
       node: ASTNode,
       children: ReactNode[],

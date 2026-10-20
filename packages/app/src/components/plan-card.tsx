@@ -11,6 +11,7 @@ import { type ASTNode } from "react-native-markdown-display";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { useTranslation } from "react-i18next";
 import { MarkdownRenderer } from "@/components/markdown/renderer";
+import { markdownTableRules } from "@/components/markdown/table";
 import { ChevronRight } from "lucide-react-native";
 import { isWeb } from "@/constants/platform";
 import type { Theme } from "@/styles/theme";
@@ -66,6 +67,7 @@ function MarkdownParagraph({
 
 function createPlanMarkdownRules() {
   return {
+    ...markdownTableRules,
     text: (
       node: ASTNode,
       _children: ReactNode[],
