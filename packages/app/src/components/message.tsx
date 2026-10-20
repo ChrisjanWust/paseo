@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { MarkdownParagraphView, MarkdownTextSpan } from "@/components/markdown-text";
-import { MarkdownTableCellText } from "@/components/markdown-text-selection";
+import { MarkdownTable, MarkdownTableCell } from "@/components/markdown/table";
 import * as React from "react";
 import {
   useState,
@@ -1608,10 +1608,16 @@ export const AssistantMessage = memo(function AssistantMessage({
       hr: (node: ASTNode, _children: ReactNode[], _parent: ASTNode[], styles: MarkdownStyles) => (
         <View key={node.key} style={styles._VIEW_SAFE_hr} dataSet={markdownCopyDataSet.hr} />
       ),
-      table: (node: ASTNode, children: ReactNode[], _parent: ASTNode[], styles: MarkdownStyles) => (
-        <View key={node.key} style={styles._VIEW_SAFE_table} dataSet={markdownCopyDataSet.table}>
+      table: (node: ASTNode, children: ReactNode[], parent: ASTNode[], styles: MarkdownStyles) => (
+        <MarkdownTable
+          key={node.key}
+          node={node}
+          styles={styles}
+          dataSet={markdownCopyDataSet.table}
+          growIntoGutter={parent[0]?.type === "body"}
+        >
           {children}
-        </View>
+        </MarkdownTable>
       ),
       thead: (node: ASTNode, children: ReactNode[], _parent: ASTNode[], styles: MarkdownStyles) => (
         <View key={node.key} style={styles._VIEW_SAFE_thead} dataSet={markdownCopyDataSet.thead}>
@@ -1884,25 +1890,27 @@ export const AssistantMessage = memo(function AssistantMessage({
           </View>
         );
       },
-      th: (node: ASTNode, children: ReactNode[], _parent: ASTNode[], styles: MarkdownStyles) => (
-        <MarkdownTableCellText key={node.key}>
-          <View
-            style={styles._VIEW_SAFE_th}
-            dataSet={markdownCopyTableCellDataSet("th", node.attributes?.style)}
-          >
-            {children}
-          </View>
-        </MarkdownTableCellText>
+      th: (node: ASTNode, children: ReactNode[], parent: ASTNode[], styles: MarkdownStyles) => (
+        <MarkdownTableCell
+          key={node.key}
+          node={node}
+          parent={parent}
+          style={styles._VIEW_SAFE_th}
+          dataSet={markdownCopyTableCellDataSet("th", node.attributes?.style)}
+        >
+          {children}
+        </MarkdownTableCell>
       ),
-      td: (node: ASTNode, children: ReactNode[], _parent: ASTNode[], styles: MarkdownStyles) => (
-        <MarkdownTableCellText key={node.key}>
-          <View
-            style={styles._VIEW_SAFE_td}
-            dataSet={markdownCopyTableCellDataSet("td", node.attributes?.style)}
-          >
-            {children}
-          </View>
-        </MarkdownTableCellText>
+      td: (node: ASTNode, children: ReactNode[], parent: ASTNode[], styles: MarkdownStyles) => (
+        <MarkdownTableCell
+          key={node.key}
+          node={node}
+          parent={parent}
+          style={styles._VIEW_SAFE_td}
+          dataSet={markdownCopyTableCellDataSet("td", node.attributes?.style)}
+        >
+          {children}
+        </MarkdownTableCell>
       ),
       paragraph: (
         node: ASTNode,
