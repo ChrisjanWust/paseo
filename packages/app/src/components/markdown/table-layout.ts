@@ -1,4 +1,5 @@
 import type { ASTNode } from "react-native-markdown-display";
+import { markdownNodeContainsType } from "@/utils/markdown-ast";
 
 // Markdown tables render as flex rows, so nothing lines columns up across rows unless every
 // cell is given the same explicit width. Widths come from an estimate of each column's text,
@@ -20,10 +21,13 @@ interface MarkdownTableCellText {
   column: number;
   text: string;
   header: boolean;
+  image: boolean;
 }
 
 // A long URL or path would otherwise pin its column wide. Past this, the word wraps mid-word.
 const MIN_CONTENT_MAX_CHARS = 18;
+const IMAGE_CELL_MIN_WIDTH = 120;
+const IMAGE_CELL_MAX_WIDTH = 240;
 // Bold header glyphs run wider than body glyphs.
 const HEADER_WIDTH_FACTOR = 1.06;
 // Estimates are approximate; erring wide keeps a line that should fit from wrapping.
@@ -60,13 +64,18 @@ function collectInlineText(node: ASTNode): string {
   return node.children.map(collectInlineText).join("");
 }
 
-function collectCells(node: ASTNode, header: boolean, cells: MarkdownTableCellText[]): void {
+function collectCells(node: ASTNode, cells: MarkdownTableCellText[]): void {
   if (node.type === "th" || node.type === "td") {
-    cells.push({ column: node.index, text: collectInlineText(node), header: node.type === "th" });
+    cells.push({
+      column: node.index,
+      text: collectInlineText(node),
+      header: node.type === "th",
+      image: markdownNodeContainsType(node, "image"),
+    });
     return;
   }
   for (const child of node.children) {
-    collectCells(child, header || node.type === "thead", cells);
+    collectCells(child, cells);
   }
 }
 
@@ -75,7 +84,7 @@ export function measureMarkdownTableColumns(
   metrics: MarkdownTableTextMetrics,
 ): MarkdownTableColumnBounds[] {
   const cells: MarkdownTableCellText[] = [];
-  collectCells(table, false, cells);
+  collectCells(table, cells);
 
   const chrome = metrics.cellPaddingX * 2 + metrics.cellBorderWidth;
   const columns: MarkdownTableColumnBounds[] = [];
@@ -84,19 +93,24 @@ export function measureMarkdownTableColumns(
     const measure = (text: string) => estimateTextWidth(text, metrics.fontSize) * factor;
     const lines = cell.text.split("\n");
     const words = cell.text.split(/\s+/);
-    const max = Math.max(0, ...lines.map(measure));
-    const min = Math.min(
+    let max = Math.max(0, ...lines.map(measure));
+    let min = Math.min(
       max,
       Math.max(0, ...words.map((word) => measure(word.slice(0, MIN_CONTENT_MAX_CHARS)))),
     );
+    // Images fill their cell, so sizing by alt text would shrink them to nothing.
+    if (cell.image) {
+      min = Math.max(min, IMAGE_CELL_MIN_WIDTH);
+      max = Math.max(max, IMAGE_CELL_MAX_WIDTH);
+    }
     const column = columns[cell.column] ?? { min: 0, max: 0 };
     columns[cell.column] = {
       min: Math.max(column.min, Math.ceil(min + chrome)),
       max: Math.max(column.max, Math.ceil(max + chrome)),
     };
   }
-  // Rows with fewer cells than the header leave holes.
-  return Array.from(columns, (column) => column ?? { min: chrome, max: chrome });
+  // markdown-it pads every row to the header's column count, so there are no holes.
+  return columns;
 }
 
 function sum(values: readonly number[]): number {

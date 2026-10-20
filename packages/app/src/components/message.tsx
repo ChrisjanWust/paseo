@@ -1608,12 +1608,13 @@ export const AssistantMessage = memo(function AssistantMessage({
       hr: (node: ASTNode, _children: ReactNode[], _parent: ASTNode[], styles: MarkdownStyles) => (
         <View key={node.key} style={styles._VIEW_SAFE_hr} dataSet={markdownCopyDataSet.hr} />
       ),
-      table: (node: ASTNode, children: ReactNode[], _parent: ASTNode[], styles: MarkdownStyles) => (
+      table: (node: ASTNode, children: ReactNode[], parent: ASTNode[], styles: MarkdownStyles) => (
         <MarkdownTable
           key={node.key}
           node={node}
           styles={styles}
           dataSet={markdownCopyDataSet.table}
+          growIntoGutter={parent[0]?.type === "body"}
         >
           {children}
         </MarkdownTable>

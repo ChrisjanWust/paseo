@@ -10,6 +10,7 @@ import {
 import { ScrollView, View, type LayoutChangeEvent, type ViewStyle } from "react-native";
 import type { ASTNode } from "react-native-markdown-display";
 import { MarkdownTableCellText } from "@/components/markdown-text-selection";
+import { isWeb } from "@/constants/platform";
 import {
   measureMarkdownTableColumns,
   placeMarkdownTable,
@@ -25,7 +26,9 @@ type DataSet = ComponentProps<typeof View>["dataSet"];
 const UNMEASURED_AVAILABLE_WIDTH = 640;
 
 // How far past the text column, per side, a table may grow. Chat measures it from the space
-// between the centered message column and the pane edge; other surfaces keep tables inside.
+// between the centered message column and the pane edge. Only top-level assistant tables opt
+// in; tables in cards, quotes, and lists stay inside their box. Native keeps it at zero:
+// Android does not hit-test children that overhang their parent.
 const MarkdownTableGutterContext = createContext(0);
 
 export function MarkdownTableGutterMeasure({
@@ -39,7 +42,7 @@ export function MarkdownTableGutterMeasure({
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
     setPaneWidth(event.nativeEvent.layout.width);
   }, []);
-  const gutter = resolveMarkdownTableGutter({ paneWidth, contentMaxWidth });
+  const gutter = isWeb ? resolveMarkdownTableGutter({ paneWidth, contentMaxWidth }) : 0;
   return (
     <>
       <View style={paneMeasureStyle} pointerEvents="none" onLayout={handleLayout} />
@@ -74,14 +77,17 @@ export function MarkdownTable({
   node,
   styles,
   dataSet,
+  growIntoGutter = false,
   children,
 }: {
   node: ASTNode;
   styles: MarkdownTableStyles;
   dataSet?: DataSet;
+  growIntoGutter?: boolean;
   children: ReactNode;
 }) {
-  const gutter = useContext(MarkdownTableGutterContext);
+  const paneGutter = useContext(MarkdownTableGutterContext);
+  const gutter = growIntoGutter ? paneGutter : 0;
   const [columnWidth, setColumnWidth] = useState<number | null>(null);
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
     const width = event.nativeEvent.layout.width;
