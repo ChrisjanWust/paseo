@@ -1,10 +1,10 @@
 ---
-name: local-dmg
-description: Merge the latest upstream main into this fork, build an unsigned arm64 macOS DMG, copy it to ~/Downloads, and open it. Use when the user says "merge in upstream and build a dmg", "rebuild the dmg", "build a local dmg", or "/local-dmg".
+name: build-dmg
+description: Merge the latest upstream main into this fork, build an unsigned arm64 macOS DMG, copy it to ~/Downloads, and open it. Use when the user says "merge in upstream and build a dmg", "rebuild the dmg", "build a local dmg", or "/build-dmg".
 user-invocable: true
 ---
 
-# Local DMG
+# Build DMG
 
 This checkout is a fork (`origin` = ChrisjanWust/paseo, `upstream` = getpaseo/paseo). The user has no Developer ID certificate, so the DMG is ad-hoc signed.
 
