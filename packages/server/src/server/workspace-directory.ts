@@ -589,11 +589,16 @@ export class WorkspaceDirectory {
       this.deps.workspaceRegistry.list(),
       this.deps.projectRegistry.list(),
     ]);
-    return activeWorkspaceRecords(workspaces, projects).map((workspace) => ({
-      id: workspace.workspaceId,
-      workspaceDirectory: workspace.cwd,
-      workspaceKind: workspace.kind,
-    }));
+    // Registration order is the order WorkspaceGitService's FIFO limiter runs each
+    // workspace's initial refresh, so newest workspaces go first. The registry itself
+    // lists in creation order, which made the oldest worktrees load first at startup.
+    return activeWorkspaceRecords(workspaces, projects)
+      .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+      .map((workspace) => ({
+        id: workspace.workspaceId,
+        workspaceDirectory: workspace.cwd,
+        workspaceKind: workspace.kind,
+      }));
   }
 
   async listDescriptors(): Promise<WorkspaceDescriptorPayload[]> {

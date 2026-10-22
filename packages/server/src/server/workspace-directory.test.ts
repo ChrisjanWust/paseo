@@ -694,3 +694,52 @@ test("Git observation targets exclude archived records without hydrating app des
     { id: "observed", workspaceDirectory: "/workspace/observed", workspaceKind: "local_checkout" },
   ]);
 });
+
+test("Git observation targets list the newest workspaces first", async () => {
+  const workspace = (id: string, createdAt: string): PersistedWorkspaceRecord => ({
+    workspaceId: id,
+    projectId: "active",
+    cwd: `/workspace/${id}`,
+    kind: "worktree",
+    displayName: id,
+    createdAt,
+    updatedAt: createdAt,
+    archivedAt: null,
+  });
+  const directory = new WorkspaceDirectory({
+    logger: createTestLogger(),
+    projectRegistry: {
+      list: async () => [
+        {
+          projectId: "active",
+          rootPath: "/workspace/active",
+          kind: "git",
+          displayName: "active",
+          customName: null,
+          createdAt: NOW,
+          updatedAt: NOW,
+          archivedAt: null,
+        },
+      ],
+    },
+    workspaceRegistry: {
+      list: async () => [
+        workspace("oldest", "2026-01-01T00:00:00.000Z"),
+        workspace("newest", "2026-03-01T00:00:00.000Z"),
+        workspace("middle", "2026-02-01T00:00:00.000Z"),
+      ],
+    },
+    listAgentPayloads: async () => [],
+    listProviderSubagentActivity: async () => [],
+    listTerminalActivityContributions: async () => [],
+    buildWorkspaceDescriptor: async () => {
+      throw new Error("unexpected descriptor hydration");
+    },
+    isProviderVisibleToClient: () => true,
+  });
+  expect((await directory.listObservationTargets()).map((target) => target.id)).toEqual([
+    "newest",
+    "middle",
+    "oldest",
+  ]);
+});
