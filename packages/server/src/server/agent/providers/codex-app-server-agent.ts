@@ -4316,6 +4316,7 @@ export class CodexAppServerAgentSession implements AgentSession {
     this.pendingForegroundStart = pendingStart;
 
     this.dismissPendingPlanApprovals("Dismissed by a new prompt");
+    this.dismissAsyncQuestions("Dismissed by a new prompt");
 
     try {
       await this.connect();
@@ -4719,10 +4720,13 @@ export class CodexAppServerAgentSession implements AgentSession {
         expectedTurnId,
         clientMessageId: randomUUID(),
       });
-      if (result.status !== "accepted") {
+      if (result.status === "accepted") {
+        followUpPrompt = undefined;
+      } else if (this.activeForegroundTurnId) {
         throw new Error("The active Codex turn changed. Retry sending your answer.");
       }
-      followUpPrompt = undefined;
+      // Otherwise the turn ended mid-steer and dismissed the question; deliver the answer as a
+      // follow-up prompt instead of losing it.
     }
     this.emitEvent({ type: "timeline", provider: CODEX_PROVIDER, item: prepared.complete() });
     this.emitEvent({
@@ -6080,6 +6084,11 @@ export class CodexAppServerAgentSession implements AgentSession {
       return;
     }
     this.completePendingRootCompactions();
+    // An async question only stays open for the turn that asked it. Once the turn ends, the
+    // agent has moved on, and an unanswered question would hold the workspace in needs-input.
+    this.dismissAsyncQuestions(
+      parsed.status === "interrupted" ? "Interrupted" : "Dismissed when the turn ended",
+    );
     if (parsed.status === "failed") {
       this.emitEvent({
         type: "turn_failed",
@@ -6087,7 +6096,6 @@ export class CodexAppServerAgentSession implements AgentSession {
         error: parsed.errorMessage ?? "Codex turn failed",
       });
     } else if (parsed.status === "interrupted") {
-      this.dismissInterruptedAsyncQuestions();
       this.emitEvent({ type: "turn_canceled", provider: CODEX_PROVIDER, reason: "interrupted" });
     } else {
       if (this.planModeEnabled && this.latestPlanResult?.text) {
@@ -6447,8 +6455,8 @@ export class CodexAppServerAgentSession implements AgentSession {
       this.emitEvent({ type: "permission_requested", provider: CODEX_PROVIDER, request });
   }
 
-  private dismissInterruptedAsyncQuestions(): void {
-    const resolution: AgentPermissionResponse = { behavior: "deny", message: "Interrupted" };
+  private dismissAsyncQuestions(message: string): void {
+    const resolution: AgentPermissionResponse = { behavior: "deny", message };
     for (const request of this.asyncQuestions.pending()) {
       const prepared = this.asyncQuestions.prepareResponse(request.id, resolution);
       this.emitEvent({ type: "timeline", provider: CODEX_PROVIDER, item: prepared.complete() });

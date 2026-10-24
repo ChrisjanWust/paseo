@@ -19,7 +19,28 @@ const questionItem = {
   questions: [{ title: "Which color?", options: ["Blue", "Green"] }],
 };
 
-async function setup(metadata?: Record<string, unknown>, rejectSteer = false) {
+const pendingQuestionMetadata = {
+  asyncQuestions: [
+    {
+      item: {
+        type: "agentMessage",
+        id: questionItem.id,
+        delivery: "async",
+        questions: questionItem.questions,
+      },
+    },
+  ],
+};
+
+async function setup({
+  metadata,
+  rejectSteer = false,
+  startTurn = true,
+}: {
+  metadata?: Record<string, unknown>;
+  rejectSteer?: boolean;
+  startTurn?: boolean;
+} = {}) {
   const appServer = createFakeCodexAppServer({
     "turn/interrupt": () => ({}),
     "turn/steer": () => {
@@ -36,10 +57,13 @@ async function setup(metadata?: Record<string, unknown>, rejectSteer = false) {
   );
   const events: AgentStreamEvent[] = [];
   session.subscribe((event) => events.push(event));
-  await session.startTurn("Help me choose a color while you inspect the project.");
-  const started = waitForNextEvent(session, "turn_started");
-  appServer.startsTurn({ threadId: "thread-1", turnId: "native-turn" });
-  await started;
+  async function start() {
+    await session.startTurn("Help me choose a color while you inspect the project.");
+    const started = waitForNextEvent(session, "turn_started");
+    appServer.startsTurn({ threadId: "thread-1", turnId: "native-turn" });
+    await started;
+  }
+  if (startTurn) await start();
   async function ask() {
     const shown = waitForTimelineToolCall(session, questionItem.id);
     appServer.child.stdout.write(
@@ -70,7 +94,7 @@ async function setup(metadata?: Record<string, unknown>, rejectSteer = false) {
   function allowAnswers() {
     rejectSteer = false;
   }
-  return { session, appServer, events, ask, say, finish, allowAnswers };
+  return { session, appServer, events, start, ask, say, finish, allowAnswers };
 }
 
 const answer = { behavior: "allow" as const, updatedInput: { answers: { "Question 1": "Green" } } };
@@ -156,7 +180,7 @@ test("rewind removes only questions outside the remaining history, including aft
   } finally {
     await session.close();
   }
-  const resumed = await setup(metadata);
+  const resumed = await setup({ metadata, startTurn: false });
   try {
     expect(resumed.session.getPendingPermissions().map((p) => p.id)).toEqual([
       "permission-earlier-pending",
@@ -274,7 +298,7 @@ test("concurrent answers deliver only one response to the active Codex turn", as
 });
 
 test("a failed submission releases the request so the user can retry", async () => {
-  const { session, ask, allowAnswers } = await setup(undefined, true);
+  const { session, ask, allowAnswers } = await setup({ rejectSteer: true });
   const { manager, agent } = await manage(session);
   try {
     await ask();
@@ -345,7 +369,7 @@ test("shows an async question, keeps streaming, and delivers its answer without 
 });
 
 test("keeps a failed answer pending for retry", async () => {
-  const { session, ask } = await setup(undefined, true);
+  const { session, ask } = await setup({ rejectSteer: true });
   try {
     await ask();
     const [permission] = session.getPendingPermissions();
@@ -384,7 +408,7 @@ test("Stop dismisses async questions before cancellation and keeps them dismisse
   } finally {
     await first.session.close();
   }
-  const resumed = await setup(metadata);
+  const resumed = await setup({ metadata });
   try {
     await resumed.ask();
     expect(resumed.session.getPendingPermissions()).toEqual([]);
@@ -393,14 +417,63 @@ test("Stop dismisses async questions before cancellation and keeps them dismisse
   }
 });
 
-test("late answers use the existing follow-up prompt and dismissal does not interrupt", async () => {
-  const { session, appServer, ask, finish } = await setup();
+test("ending the turn dismisses unanswered questions and keeps them dismissed after resume", async () => {
+  const first = await setup();
+  let metadata: Record<string, unknown> | undefined;
   try {
-    await ask();
+    await first.ask();
+    expect(first.session.getPendingPermissions()).toHaveLength(1);
+    await first.finish();
+    expect(first.session.getPendingPermissions()).toEqual([]);
+    expect(first.events).toContainEqual(
+      expect.objectContaining({
+        type: "permission_resolved",
+        requestId: "permission-async-question-1",
+        resolution: { behavior: "deny", message: "Dismissed when the turn ended" },
+      }),
+    );
+    metadata = first.session.describePersistence()!.metadata;
+    expect(metadata.asyncQuestions).toEqual([expect.objectContaining({ resolution: "dismissed" })]);
+  } finally {
+    await first.session.close();
+  }
+  const resumed = await setup({ metadata, startTurn: false });
+  try {
+    expect(resumed.session.getPendingPermissions()).toEqual([]);
+  } finally {
+    await resumed.session.close();
+  }
+});
+
+test("a new prompt dismisses questions left over from an earlier session", async () => {
+  const { session, events, start } = await setup({
+    metadata: pendingQuestionMetadata,
+    startTurn: false,
+  });
+  try {
+    expect(session.getPendingPermissions()).toHaveLength(1);
+    await start();
+    expect(session.getPendingPermissions()).toEqual([]);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "permission_resolved",
+        requestId: "permission-async-question-1",
+        resolution: { behavior: "deny", message: "Dismissed by a new prompt" },
+      }),
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("answers to restored questions outside a turn use the follow-up prompt without interrupting", async () => {
+  const { session, appServer } = await setup({
+    metadata: pendingQuestionMetadata,
+    startTurn: false,
+  });
+  try {
     const [permission] = session.getPendingPermissions();
     expect(permission).toBeDefined();
-    await finish();
-    expect(session.getPendingPermissions()).toHaveLength(1);
     expect(await session.respondToPermission(permission.id, answer)).toEqual({
       followUpPrompt: "Answers to your questions:\n\nWhich color?\nGreen",
     });
@@ -420,11 +493,12 @@ test("restores unanswered questions and does not reopen answered questions on du
   } finally {
     await first.session.close();
   }
-  const resumed = await setup(metadata);
+  const resumed = await setup({ metadata, startTurn: false });
   try {
     const [permission] = resumed.session.getPendingPermissions();
     expect(permission).toBeDefined();
     await resumed.session.respondToPermission(permission.id, { behavior: "deny" });
+    await resumed.start();
     await resumed.ask();
     expect(resumed.session.getPendingPermissions()).toEqual([]);
     expect(
