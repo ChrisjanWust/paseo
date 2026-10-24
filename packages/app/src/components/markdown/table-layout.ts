@@ -187,7 +187,7 @@ export function placeMarkdownTable(input: {
   };
 }
 
-// Keeps a widened table clear of the chat outline rail at the pane's left edge.
+// Keeps a widened table clear of the pane edge and of the chat outline rail.
 const PANE_EDGE_INSET = 48;
 
 export function resolveMarkdownTableGutter(input: {

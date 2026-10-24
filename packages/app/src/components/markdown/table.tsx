@@ -25,10 +25,10 @@ type DataSet = ComponentProps<typeof View>["dataSet"];
 // Until the table has measured the column it sits in, cells share the row by these weights.
 const UNMEASURED_AVAILABLE_WIDTH = 640;
 
-// How far past the text column, per side, a table may grow. Chat measures it from the space
-// between the centered message column and the pane edge. Only top-level assistant tables opt
-// in; tables in cards, quotes, and lists stay inside their box. Native keeps it at zero:
-// Android does not hit-test children that overhang their parent.
+// How far past the text column, per side, a table may grow. Chat and the Markdown file preview
+// measure it from the space between the centered text column and the pane edge. Only
+// top-level tables opt in; tables in cards, quotes, and lists stay inside their box. Native
+// keeps it at zero: Android does not hit-test children that overhang their parent.
 const MarkdownTableGutterContext = createContext(0);
 
 export function MarkdownTableGutterMeasure({
@@ -52,6 +52,12 @@ export function MarkdownTableGutterMeasure({
 }
 
 const paneMeasureStyle: ViewStyle = { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 };
+
+// For boxes that render markdown as its own document, such as a <details> body or the text
+// beside inline images, whose top-level tables would otherwise grow out of the box.
+export function MarkdownTableGutterReset({ children }: { children: ReactNode }) {
+  return <MarkdownTableGutterContext value={0}>{children}</MarkdownTableGutterContext>;
+}
 
 interface MarkdownTableColumns {
   widths: readonly number[] | null;
@@ -77,12 +83,14 @@ export function MarkdownTable({
   node,
   styles,
   dataSet,
+  testID,
   growIntoGutter = false,
   children,
 }: {
   node: ASTNode;
   styles: MarkdownTableStyles;
   dataSet?: DataSet;
+  testID?: string;
   growIntoGutter?: boolean;
   children: ReactNode;
 }) {
@@ -126,7 +134,7 @@ export function MarkdownTable({
   );
 
   const table = (
-    <View style={tableStyle} dataSet={dataSet}>
+    <View style={tableStyle} dataSet={dataSet} testID={testID}>
       {children}
     </View>
   );

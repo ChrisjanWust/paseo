@@ -41,7 +41,7 @@ import { resolveInlineImageSize, type InlineImageDimensions } from "./inline-ima
 import { groupMarkdownParts, type MarkdownPartGroup } from "./part-groups";
 import { colorMarkdownLinkChildren } from "./link-children";
 import { MarkdownLinkText } from "./link-text";
-import { markdownTableRules } from "./table";
+import { MarkdownTableGutterReset, markdownTableRules } from "./table";
 
 export type MarkdownStyles = Record<string, TextStyle & ViewStyle & { [key: string]: unknown }>;
 
@@ -349,7 +349,9 @@ function MarkdownImageTextGroup({
           <MarkdownFlowImage key={image.src} part={image} onLinkPress={rendererProps.onLinkPress} />
         ))}
         <View style={detailsStyles.imageTextRowContent}>
-          <MarkdownFragment text={group.lead} {...rendererProps} />
+          <MarkdownTableGutterReset>
+            <MarkdownFragment text={group.lead} {...rendererProps} />
+          </MarkdownTableGutterReset>
         </View>
       </View>
       {group.rest ? <MarkdownFragment text={group.rest} {...rendererProps} /> : null}
@@ -382,7 +384,9 @@ function MarkdownDetails({
       </Pressable>
       {open ? (
         <View style={detailsStyles.body}>
-          <MarkdownPartList parts={bodyParts} rendererProps={rendererProps} />
+          <MarkdownTableGutterReset>
+            <MarkdownPartList parts={bodyParts} rendererProps={rendererProps} />
+          </MarkdownTableGutterReset>
         </View>
       ) : null}
     </View>
