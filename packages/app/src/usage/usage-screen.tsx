@@ -19,7 +19,12 @@ function leaveUsage(): void {
 export function UsageScreen() {
   const isFocused = useIsFocused();
   return (
-    <PageLayout title={usageCopy.title} onBack={leaveUsage} testID="usage-screen">
+    <PageLayout
+      title={usageCopy.title}
+      headerTitle={usageCopy.title}
+      onBack={leaveUsage}
+      testID="usage-screen"
+    >
       {isFocused ? <UsageScreenContent /> : null}
     </PageLayout>
   );

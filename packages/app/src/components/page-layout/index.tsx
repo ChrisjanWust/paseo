@@ -8,6 +8,8 @@ import { useIsCompactFormFactor } from "@/constants/layout";
 
 interface PageLayoutProps {
   title?: string;
+  /** Desktop header title, e.g. the screen the page belongs to. */
+  headerTitle?: string;
   /** Compact back button. Defaults to navigating back. */
   onBack?: () => void;
   testID?: string;
@@ -17,10 +19,18 @@ interface PageLayoutProps {
 
 /**
  * A full-width page with a centered content column. On desktop the title is a
- * document heading inside the page and the header only keeps the titlebar drag
- * region and window controls; on compact the title moves into a back header.
+ * document heading inside the page and the header carries `headerTitle` next to
+ * the titlebar drag region and window controls; on compact the title moves into
+ * a back header.
  */
-export function PageLayout({ title, onBack, testID, titleTestID, children }: PageLayoutProps) {
+export function PageLayout({
+  title,
+  headerTitle,
+  onBack,
+  testID,
+  titleTestID,
+  children,
+}: PageLayoutProps) {
   const isCompact = useIsCompactFormFactor();
   const insets = useSafeAreaInsets();
   const scrollContentStyle = useMemo(() => ({ paddingBottom: insets.bottom }), [insets.bottom]);
@@ -28,7 +38,11 @@ export function PageLayout({ title, onBack, testID, titleTestID, children }: Pag
 
   return (
     <View style={styles.container}>
-      {isCompact ? <BackHeader title={title} onBack={onBack} /> : <MenuHeader borderless />}
+      {isCompact ? (
+        <BackHeader title={title} onBack={onBack} />
+      ) : (
+        <MenuHeader title={headerTitle} />
+      )}
       <ScrollView style={styles.scroll} contentContainerStyle={scrollContentStyle} testID={testID}>
         <View style={styles.content}>
           {showTitle ? (
