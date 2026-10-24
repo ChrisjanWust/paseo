@@ -197,31 +197,31 @@ test.describe("markdown table layout", () => {
       const ticketsTable = tables.nth(1);
       const paragraph = frame.getByText("Eight of her 9 points");
 
+      // Wrapped text stops short of the column's right edge by a font-dependent amount, so
+      // right-hand bounds come from the reading frame, not the paragraph.
+      const frameBox = await box(frame);
+      const frameRight = frameBox.x + frameBox.width;
       const paragraphBox = await box(paragraph);
       const narrowBox = await box(narrowTable);
       const ticketsBox = await box(ticketsTable);
       const viewport = await scrollViewport(ticketsTable);
 
       // A small table hugs its content and stays aligned with the prose.
-      expect(narrowBox.width).toBeLessThan(paragraphBox.width / 3);
+      expect(narrowBox.width).toBeLessThan(frameBox.width / 3);
       expect(Math.abs(narrowBox.x - paragraphBox.x)).toBeLessThanOrEqual(1);
 
-      // A wide table grows past the prose column on both sides, but not past the preview.
-      expect(ticketsBox.x).toBeLessThan(paragraphBox.x - 20);
-      expect(ticketsBox.x + ticketsBox.width).toBeGreaterThan(
-        paragraphBox.x + paragraphBox.width + 20,
-      );
+      // A wide table grows past the reading frame on both sides, but not past the preview.
+      expect(ticketsBox.x).toBeLessThan(frameBox.x - 20);
+      expect(ticketsBox.x + ticketsBox.width).toBeGreaterThan(frameRight + 20);
       expect(ticketsBox.x).toBeGreaterThanOrEqual(viewport.x);
       expect(ticketsBox.x + ticketsBox.width).toBeLessThanOrEqual(viewport.x + viewport.width);
 
-      // A table inside a <details> box stays inside the box.
+      // A table inside a <details> box stays inside the reading frame.
       await frame.getByText("Tickets again").click();
       await expect(tables).toHaveCount(3);
       const detailsBox = await box(tables.nth(2));
       expect(detailsBox.x).toBeGreaterThanOrEqual(paragraphBox.x);
-      expect(detailsBox.x + detailsBox.width).toBeLessThanOrEqual(
-        paragraphBox.x + paragraphBox.width,
-      );
+      expect(detailsBox.x + detailsBox.width).toBeLessThanOrEqual(frameRight);
     } finally {
       await agent.cleanup();
     }
