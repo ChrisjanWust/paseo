@@ -115,9 +115,8 @@ interface WorkspaceTabIconProps {
   active?: boolean;
   size?: number;
   strokeWidth?: number;
-  statusDotBorderColor?: string;
   /**
-   * The surface this icon is sitting on, so the running ring can knock out of it. This icon is
+   * The surface this icon is sitting on, so the running ring and status dot can knock out of it. This icon is
    * shared by the desktop tab strip, the tab switcher trigger, the split drag chip and the
    * subagents track, which are on different surfaces and some of which change surface on hover —
    * it cannot work the colour out for itself.
@@ -138,7 +137,6 @@ export function WorkspaceTabIcon({
   active = false,
   size = 14,
   strokeWidth,
-  statusDotBorderColor,
   backdrop,
 }: WorkspaceTabIconProps): ReactElement {
   const iconColor = active ? styles.iconActive.color : styles.iconInactive.color;
@@ -154,14 +152,8 @@ export function WorkspaceTabIcon({
     [size],
   );
   const statusDotStyle = useMemo(
-    () => [
-      styles.statusDot,
-      {
-        backgroundColor: statusDotColor,
-        borderColor: statusDotBorderColor ?? styles.statusDotBorderDefault.borderColor,
-      },
-    ],
-    [statusDotColor, statusDotBorderColor],
+    () => [styles.statusDot, styles.statusDotBorder(backdrop), { backgroundColor: statusDotColor }],
+    [statusDotColor, backdrop],
   );
 
   return (
@@ -279,9 +271,9 @@ const styles = StyleSheet.create((theme) => ({
     right: getStatusRingOffset(DEFAULT_STATUS_DOT_OFFSET, STATUS_INDICATOR_DOT_SIZE),
     bottom: getStatusRingOffset(DEFAULT_STATUS_DOT_OFFSET, STATUS_INDICATOR_DOT_SIZE),
   },
-  statusDotBorderDefault: {
-    borderColor: theme.colors.surface0,
-  },
+  statusDotBorder: (backdrop: SurfaceBackdrop) => ({
+    borderColor: theme.colors[backdrop],
+  }),
   statusAlertOverlay: {
     position: "absolute",
     right: STATUS_ALERT_OFFSET,

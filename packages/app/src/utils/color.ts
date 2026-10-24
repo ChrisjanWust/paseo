@@ -140,3 +140,20 @@ export function capHexColorLightness(hex: string, maxLightness: number): string 
 
   return `#${toHexChannel(linearToSrgb(Math.max(0, linearR)))}${toHexChannel(linearToSrgb(Math.max(0, linearG)))}${toHexChannel(linearToSrgb(Math.max(0, linearB)))}`;
 }
+
+/**
+ * Lowers a colour's OKLab lightness by `amount` (0–1) while keeping its hue, so the step reads
+ * the same on a near-black and a mid-grey surface. A `#rrggbbaa` alpha suffix is kept. Input that
+ * is not a hex colour comes back untouched.
+ */
+export function darkenHexColor(hex: string, amount: number): string {
+  const isRgba = /^#[0-9a-fA-F]{8}$/.test(hex);
+  const opaque = isRgba ? hex.slice(0, 7) : hex;
+  const rgb = parseHexColor(opaque);
+  if (!rgb) return hex;
+
+  const [r, g, b] = rgb;
+  const { L } = linearRgbToOklab(srgbToLinear(r), srgbToLinear(g), srgbToLinear(b));
+  const darkened = capHexColorLightness(opaque, Math.max(0, L - amount));
+  return isRgba ? `${darkened}${hex.slice(7)}` : darkened;
+}

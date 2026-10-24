@@ -1480,7 +1480,11 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
         </WindowChromeRegion>
         <WindowChromeRegion corners="top-right">
           <View style={desktopStyles.contentPane} testID="settings-detail-pane">
-            <PageLayout title={detailTitle} titleTestID="settings-detail-header-title">
+            <PageLayout
+              title={detailTitle}
+              headerTitle={t("settings.title")}
+              titleTestID="settings-detail-header-title"
+            >
               {content}
             </PageLayout>
           </View>

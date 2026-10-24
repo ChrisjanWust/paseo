@@ -1424,9 +1424,11 @@ const styles = StyleSheet.create((theme) => ({
     backgroundColor: theme.colors.surface0,
     overflow: "hidden",
   },
+  // Also fills the window-control padding WindowChromeSafeArea adds beside the tab row.
   paneTabs: {
     position: "relative",
     minWidth: 0,
+    backgroundColor: theme.colors.surfaceChrome,
   },
   paneContent: {
     position: "relative",

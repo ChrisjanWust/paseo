@@ -11,6 +11,7 @@ import {
   lightTheme,
   type Theme,
 } from "@/styles/theme";
+import { darkenHexColor } from "@/utils/color";
 import {
   getPreferredPluginContributionHost,
   rememberPluginContributionHost,
@@ -51,6 +52,11 @@ interface PluginThemeTarget {
   contribution: PluginThemeContribution;
 }
 
+// OKLab lightness step from the background down to the sidebar and top bars in dark plugin
+// themes. The built-in dark themes step their sidebar down 0.015–0.029; without it the chrome
+// and the content both paint `background` and merge into one surface.
+const DARK_CHROME_LIGHTNESS_STEP = 0.025;
+
 export function parsePluginThemeContribution(value: unknown): PluginThemeContribution {
   return contributionSchema.parse(value);
 }
@@ -58,6 +64,7 @@ export function parsePluginThemeContribution(value: unknown): PluginThemeContrib
 function buildDarkPluginTheme(contribution: PluginThemeContribution): Theme {
   const colors = contribution.colors;
   const accent = colors.accent ?? colors.foreground;
+  const chrome = darkenHexColor(colors.background, DARK_CHROME_LIGHTNESS_STEP);
   return buildDarkTheme(
     buildDarkSemanticColors({
       surface0: colors.background,
@@ -66,7 +73,8 @@ function buildDarkPluginTheme(contribution: PluginThemeContribution): Theme {
       surface3: colors.border,
       surface4: colors.ring,
       surfaceDiffEmpty: colors.raised,
-      surfaceSidebar: colors.background,
+      surfaceSidebar: chrome,
+      surfaceChrome: chrome,
       foreground: colors.foreground,
       foregroundMuted: colors.mutedForeground,
       foregroundExtraMuted: colors.ring,

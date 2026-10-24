@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   capHexColorLightness,
+  darkenHexColor,
   desaturateHexColor,
   hexColorWithAlpha,
   parseHexColor,
@@ -93,5 +94,20 @@ describe("capHexColorLightness", () => {
 
   it("passes non-hex input through untouched", () => {
     expect(capHexColorLightness("currentColor", 0.42)).toBe("currentColor");
+  });
+});
+
+describe("darkenHexColor", () => {
+  it("matches known values", () => {
+    expect(darkenHexColor("#4a3f31", 0.025)).toBe("#43382b");
+    expect(darkenHexColor("#1e1e2e", 0.025)).toBe("#181828");
+  });
+
+  it("stops at black", () => {
+    expect(darkenHexColor("#000000", 0.025)).toBe("#000000");
+  });
+
+  it("passes non-hex input through untouched", () => {
+    expect(darkenHexColor("currentColor", 0.025)).toBe("currentColor");
   });
 });

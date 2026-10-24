@@ -751,7 +751,7 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
                 activeTab={activeTab}
                 normalizedServerId={normalizedServerId}
                 normalizedWorkspaceId={normalizedWorkspaceId}
-                backdrop={pressed ? "surface1" : "surface0"}
+                backdrop={pressed ? "surface1" : "surfaceChrome"}
               />
             </View>
             <ThemedChevronDown size={14} uniProps={mutedColorMapping} />
@@ -4273,7 +4273,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   newTabTooltipShortcut: {},
   mobileTabsRow: {
-    backgroundColor: theme.colors.surface0,
+    backgroundColor: theme.colors.surfaceChrome,
     borderBottomWidth: theme.borderWidth[1],
     borderBottomColor: theme.colors.border,
   },

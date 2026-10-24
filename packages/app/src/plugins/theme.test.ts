@@ -94,7 +94,9 @@ describe("plugin theme palettes", () => {
       surface0: "#1e1e2e",
       surface1: "#313244",
       surface2: "#45475a",
-      surfaceSidebar: "#1e1e2e",
+      // A step darker than background, so the sidebar and top bars separate from the content.
+      surfaceSidebar: "#181828",
+      surfaceChrome: "#181828",
       foreground: "#cdd6f4",
       foregroundMuted: "#a6adc8",
       border: "#45475a",
@@ -139,6 +141,7 @@ describe("plugin theme palettes", () => {
       surface1: "#e6e9ef",
       surface2: "#dce0e8",
       surfaceSidebar: "#dce0e8",
+      surfaceChrome: "#eff1f5",
       foreground: "#4c4f69",
       border: "#ccd0da",
       accent: "#8839ef",

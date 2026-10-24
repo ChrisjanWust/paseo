@@ -46,6 +46,8 @@ function getBackdropStyle(backdrop: SurfaceBackdrop | null | undefined) {
       return styles.backdropSurface0;
     case "surface1":
       return styles.backdropSurface1;
+    case "surfaceChrome":
+      return styles.backdropSurfaceChrome;
     case "surfaceSidebar":
       return styles.backdropSurfaceSidebar;
     case "surfaceSidebarHover":
@@ -91,6 +93,7 @@ export const styles = StyleSheet.create((theme) => {
     },
     backdropSurface0: { backgroundColor: theme.colors.surface0 },
     backdropSurface1: { backgroundColor: theme.colors.surface1 },
+    backdropSurfaceChrome: { backgroundColor: theme.colors.surfaceChrome },
     backdropSurfaceSidebar: { backgroundColor: theme.colors.surfaceSidebar },
     backdropSurfaceSidebarHover: { backgroundColor: theme.colors.surfaceSidebarHover },
     backdropSurfaceSidebarSelected: { backgroundColor: theme.colors.surfaceSidebarSelected },

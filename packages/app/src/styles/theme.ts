@@ -296,6 +296,7 @@ export interface LightThemeConfig {
   surface4: string;
   surfaceDiffEmpty: string;
   surfaceSidebar: string;
+  surfaceChrome?: string;
   foreground: string;
   foregroundMuted: string;
   foregroundExtraMuted: string;
@@ -341,6 +342,8 @@ export function buildLightSemanticColors(tint: LightThemeConfig) {
     surfaceSidebarHover: tint.surface1,
     surfaceSidebarSelected: tint.surface3,
     surfaceWorkspace: tint.surface0,
+    // Top bars: screen headers and workspace tab rows.
+    surfaceChrome: tint.surfaceChrome ?? tint.surface0,
     interactionHighlight: "rgba(0, 0, 0, 0.06)",
 
     foreground: tint.foreground,
@@ -427,6 +430,7 @@ export interface DarkThemeConfig {
   surface4: string;
   surfaceDiffEmpty: string;
   surfaceSidebar: string;
+  surfaceChrome?: string;
   foregroundMuted: string;
   foregroundExtraMuted: string;
   border: string;
@@ -472,6 +476,8 @@ export function buildDarkSemanticColors(tint: DarkThemeConfig) {
     surfaceSidebarHover: tint.surface1,
     surfaceSidebarSelected: tint.surface2,
     surfaceWorkspace: tint.surface1,
+    // Top bars: screen headers and workspace tab rows.
+    surfaceChrome: tint.surfaceChrome ?? tint.surface0,
     interactionHighlight: "rgba(255, 255, 255, 0.08)",
 
     foreground,

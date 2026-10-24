@@ -643,7 +643,7 @@ function resolveChipBackdrop({
   isFilled: boolean;
 }): SurfaceBackdrop {
   if (isActiveFocused) return "surface2";
-  return isFilled ? "surface1" : "surface0";
+  return isFilled ? "surface1" : "surfaceChrome";
 }
 
 function TabHandleContent({
@@ -1370,7 +1370,7 @@ function ResolvedWorkspaceDesktopTabsRow({
         </Animated.ScrollView>
         <HorizontalScrollBoundaryShades
           visible={layout.requiresHorizontalScrollFallback}
-          backdrop="surface"
+          backdrop="chrome"
           testIDPrefix="workspace-tabs-scroll-shade"
           leftStyle={tabScrollBoundary.leftShadeStyle}
           rightStyle={tabScrollBoundary.rightShadeStyle}
@@ -1533,7 +1533,7 @@ const styles = StyleSheet.create((theme) => ({
     height: WORKSPACE_SECONDARY_HEADER_HEIGHT,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-    backgroundColor: theme.colors.surface0,
+    backgroundColor: theme.colors.surfaceChrome,
     flexDirection: "row",
     alignItems: "center",
     overflow: "visible",
