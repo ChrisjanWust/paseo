@@ -4720,10 +4720,13 @@ export class CodexAppServerAgentSession implements AgentSession {
         expectedTurnId,
         clientMessageId: randomUUID(),
       });
-      if (result.status !== "accepted") {
+      if (result.status === "accepted") {
+        followUpPrompt = undefined;
+      } else if (this.activeForegroundTurnId) {
         throw new Error("The active Codex turn changed. Retry sending your answer.");
       }
-      followUpPrompt = undefined;
+      // Otherwise the turn ended mid-steer and dismissed the question; deliver the answer as a
+      // follow-up prompt instead of losing it.
     }
     this.emitEvent({ type: "timeline", provider: CODEX_PROVIDER, item: prepared.complete() });
     this.emitEvent({
