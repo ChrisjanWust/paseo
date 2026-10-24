@@ -1,5 +1,6 @@
 import type { Locator } from "@playwright/test";
 import { expect, test, type Page } from "../support/fixtures";
+import { openFileExplorer, openFileFromExplorer } from "../support/helpers/file-explorer";
 import { openAgentRoute, seedMockAgentWorkspace } from "../support/helpers/mock-agent";
 
 const NARROW_TABLE = ["| Key | Value |", "| --- | --- |", "| a | 1 |", "| b | 2 |"].join("\n");
@@ -13,6 +14,23 @@ const TICKETS_TABLE = [
   '|  |  | AXO-266 account behind "Transfer from DDA" | DONE | Correct |',
   "|  |  | AXO-260 PC Lender income/employment | OPEN | Correct. Blocked on Axos data (not Day One). |",
   '|  |  | AXO-272 income "not documented" wording | IN_PROGRESS | Probably done (findings now mention PC Lender). I haven\'t checked the latest run yet, so this needs a second look before we close it out. |',
+].join("\n");
+
+const PREVIEW_MARKDOWN = [
+  "Short table:",
+  "",
+  NARROW_TABLE,
+  "",
+  "Eight of her 9 points already have tickets. Only point 6 (alert statuses) has none. Two of the existing tickets show the wrong status.",
+  "",
+  TICKETS_TABLE,
+  "",
+  "<details>",
+  "<summary>Tickets again</summary>",
+  "",
+  TICKETS_TABLE,
+  "",
+  "</details>",
 ].join("\n");
 
 const ASSISTANT_MARKDOWN = [
@@ -56,8 +74,8 @@ async function cellColumns(table: Locator): Promise<{ x: number; width: number }
   );
 }
 
-/** The chat's scroll viewport, which a widened table must stay inside. */
-async function chatViewport(table: Locator): Promise<Box> {
+/** The scroll viewport around a table, which a widened table must stay inside. */
+async function scrollViewport(table: Locator): Promise<Box> {
   return table.evaluate((element) => {
     let node: HTMLElement | null = element.parentElement;
     while (node) {
@@ -102,7 +120,7 @@ test.describe("markdown table layout", () => {
       const paragraphBox = await box(paragraph);
       const narrowBox = await box(narrowTable);
       const ticketsBox = await box(ticketsTable);
-      const viewport = await chatViewport(ticketsTable);
+      const viewport = await scrollViewport(ticketsTable);
 
       // A small table hugs its content and stays aligned with the prose.
       expect(narrowBox.width).toBeLessThan(paragraphBox.width / 3);
@@ -152,6 +170,58 @@ test.describe("markdown table layout", () => {
         return parent ? { client: parent.clientWidth, scroll: parent.scrollWidth } : null;
       });
       expect(scroller?.scroll).toBeGreaterThan(scroller?.client ?? Infinity);
+    } finally {
+      await agent.cleanup();
+    }
+  });
+
+  test("widens wide tables into the margins of a Markdown file preview", async ({ page }) => {
+    const agent = await seedMockAgentWorkspace({
+      repoPrefix: "markdown-table-preview-",
+      title: "Markdown table preview",
+      initialPrompt: "Say hello.",
+      repo: { files: [{ path: "TABLES.md", content: PREVIEW_MARKDOWN }] },
+    });
+
+    try {
+      await agent.client.waitForFinish(agent.agentId, 30_000);
+      await page.setViewportSize({ width: 2560, height: 1080 });
+      await openAgentRoute(page, agent);
+      await openFileExplorer(page);
+      await openFileFromExplorer(page, "TABLES.md");
+
+      const frame = page.getByTestId("markdown-preview-frame");
+      const tables = frame.getByTestId("markdown-preview-table");
+      await expect(tables).toHaveCount(2);
+      const narrowTable = tables.nth(0);
+      const ticketsTable = tables.nth(1);
+      const paragraph = frame.getByText("Eight of her 9 points");
+
+      // Wrapped text stops short of the column's right edge by a font-dependent amount, so
+      // right-hand bounds come from the reading frame, not the paragraph.
+      const frameBox = await box(frame);
+      const frameRight = frameBox.x + frameBox.width;
+      const paragraphBox = await box(paragraph);
+      const narrowBox = await box(narrowTable);
+      const ticketsBox = await box(ticketsTable);
+      const viewport = await scrollViewport(ticketsTable);
+
+      // A small table hugs its content and stays aligned with the prose.
+      expect(narrowBox.width).toBeLessThan(frameBox.width / 3);
+      expect(Math.abs(narrowBox.x - paragraphBox.x)).toBeLessThanOrEqual(1);
+
+      // A wide table grows past the reading frame on both sides, but not past the preview.
+      expect(ticketsBox.x).toBeLessThan(frameBox.x - 20);
+      expect(ticketsBox.x + ticketsBox.width).toBeGreaterThan(frameRight + 20);
+      expect(ticketsBox.x).toBeGreaterThanOrEqual(viewport.x);
+      expect(ticketsBox.x + ticketsBox.width).toBeLessThanOrEqual(viewport.x + viewport.width);
+
+      // A table inside a <details> box stays inside the reading frame.
+      await frame.getByText("Tickets again").click();
+      await expect(tables).toHaveCount(3);
+      const detailsBox = await box(tables.nth(2));
+      expect(detailsBox.x).toBeGreaterThanOrEqual(paragraphBox.x);
+      expect(detailsBox.x + detailsBox.width).toBeLessThanOrEqual(frameRight);
     } finally {
       await agent.cleanup();
     }
