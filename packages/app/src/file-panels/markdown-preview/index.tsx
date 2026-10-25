@@ -60,6 +60,7 @@ export function FileMarkdownPreview({
             relativePathBase={relativePathBase ?? undefined}
           >
             <MarkdownRenderer
+              wideTables
               text={document.body}
               filePath={filePath}
               workspaceRoot={workspaceRoot}

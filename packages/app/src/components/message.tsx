@@ -1185,6 +1185,7 @@ export const AssistantMessage = memo(function AssistantMessage({
       onLayout={measureMessage}
     >
       <MarkdownRenderer
+        wideTables
         text={revealedMessage}
         streaming={phase !== "complete" || revealedMessage.length < renderedMessage.text.length}
         client={client}
