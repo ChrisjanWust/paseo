@@ -2081,6 +2081,7 @@ export const es: TranslationResources = {
     output: "Producción",
   },
   toolCallGroup: {
+    thinking: "Pensando",
     editedFiles: {
       one: "editó {{count}} archivo",
       other: "editó {{count}} archivos",

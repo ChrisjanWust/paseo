@@ -221,7 +221,11 @@ test.describe("compact overview tool calls", () => {
 
       const group = page.getByTestId("tool-call-group").first();
       await expect(group).toBeVisible();
-      await group.click();
+      await group
+        .getByTestId("tool-call-group-chip")
+        .filter({ hasNotText: "Thinking" })
+        .last()
+        .click();
 
       const sheet = page.getByTestId("tool-call-group-sheet");
       const summary = page.getByTestId("tool-call-group-sheet-summary");
@@ -274,7 +278,11 @@ test("keeps overview tool calls inline on desktop", async ({ page }) => {
     await expect(group).toBeVisible();
 
     // Keep streaming layout changes out of the pointer-down/pointer-up interval.
-    const header = group.getByRole("button").first();
+    const header = group
+      .getByTestId("tool-call-group-chip")
+      .filter({ hasNotText: "Thinking" })
+      .last()
+      .getByRole("button");
     await header.click();
     await expect(group.getByTestId("tool-call-badge").first()).toBeVisible();
     await expect(page.getByTestId("tool-call-group-sheet")).toHaveCount(0);

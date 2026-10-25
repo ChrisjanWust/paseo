@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ToolCallDetail } from "@getpaseo/protocol/agent-types";
-import type { StreamItem, ToolCallItem } from "@/types/stream";
+import type { StreamItem, ThoughtItem, ToolCallItem } from "@/types/stream";
 import {
   prepareToolCallHistory,
   projectToolCallDetailLevel,
@@ -33,6 +33,16 @@ function toolCall(
         detail,
       },
     },
+  };
+}
+
+function thought(id: string, status: "loading" | "ready" = "ready"): ThoughtItem {
+  return {
+    kind: "thought",
+    id,
+    text: `thinking ${id}`,
+    timestamp: new Date(`2026-01-01T00:00:${id.padStart(2, "0")}.000Z`),
+    status,
   };
 }
 
@@ -111,7 +121,7 @@ describe("tool call detail-level projection", () => {
     });
     expect(single.head).toEqual([firstCall]);
     expect(single.groupsByHostId.get(firstCall.id)?.run).toMatchObject({
-      calls: [firstCall],
+      items: [firstCall],
       latest: firstCall,
       isSealed: false,
     });
@@ -126,7 +136,7 @@ describe("tool call detail-level projection", () => {
       expect.objectContaining({ id: firstCall.id, timestamp: secondCall.timestamp }),
     ]);
     expect(grouped.groupsByHostId.get(firstCall.id)?.run).toMatchObject({
-      calls: [firstCall, secondCall],
+      items: [firstCall, secondCall],
       latest: secondCall,
       isSealed: false,
     });
@@ -152,7 +162,7 @@ describe("tool call detail-level projection", () => {
 
     expect(group).toMatchObject({
       isLoading: true,
-      summary: { commandCount: 1 },
+      segments: [{ summary: { commandCount: 1 } }],
     });
   });
 
@@ -186,7 +196,7 @@ describe("tool call detail-level projection", () => {
     expect(sealed.groupsByHostId.get("1")).toMatchObject({
       mode: "overview",
       run: { latest: calls[3], isSealed: true },
-      summary: { editedFileCount: 1, readFileCount: 2, commandCount: 1 },
+      segments: [{ summary: { editedFileCount: 1, readFileCount: 2, commandCount: 1 } }],
     });
   });
 
@@ -204,7 +214,7 @@ describe("tool call detail-level projection", () => {
     expect(result.groupsByHostId.get("1")).toMatchObject({
       run: { latest: calls[3], isSealed: false },
       isLoading: true,
-      summary: { commandCount: 4 },
+      segments: [{ summary: { commandCount: 4 } }],
     });
   });
 
@@ -254,14 +264,22 @@ describe("tool call detail-level projection", () => {
       mode: "overview",
       run: expect.any(Object),
       isLoading: false,
-      summary: {
-        editedFileCount: 1,
-        commandCount: 1,
-        readFileCount: 2,
-        searchCount: 0,
-        otherToolCount: 0,
-        paseoCallCount: 0,
-      },
+      segments: [
+        {
+          kind: "tools",
+          id: "1",
+          calls,
+          isLoading: false,
+          summary: {
+            editedFileCount: 1,
+            commandCount: 1,
+            readFileCount: 2,
+            searchCount: 0,
+            otherToolCount: 0,
+            paseoCallCount: 0,
+          },
+        },
+      ],
     });
   });
 
@@ -281,13 +299,17 @@ describe("tool call detail-level projection", () => {
     const result = project({ level: "overview", head: calls });
 
     expect(result.groupsByHostId.get("1")).toMatchObject({
-      summary: {
-        editedFileCount: 0,
-        commandCount: 0,
-        readFileCount: 2,
-        searchCount: 1,
-        otherToolCount: 2,
-      },
+      segments: [
+        {
+          summary: {
+            editedFileCount: 0,
+            commandCount: 0,
+            readFileCount: 2,
+            searchCount: 1,
+            otherToolCount: 2,
+          },
+        },
+      ],
     });
   });
 
@@ -304,12 +326,16 @@ describe("tool call detail-level projection", () => {
     const result = project({ level: "overview", head: calls });
 
     expect(result.groupsByHostId.get("1")).toMatchObject({
-      summary: {
-        editedFileCount: 2,
-        commandCount: 2,
-        readFileCount: 1,
-        otherToolCount: 0,
-      },
+      segments: [
+        {
+          summary: {
+            editedFileCount: 2,
+            commandCount: 2,
+            readFileCount: 1,
+            otherToolCount: 0,
+          },
+        },
+      ],
     });
   });
 
@@ -328,7 +354,7 @@ describe("tool call detail-level projection", () => {
     const result = project({ level: "overview", head: calls });
 
     expect(result.groupsByHostId.get("1")).toMatchObject({
-      summary: { otherToolCount: 2, paseoCallCount: 2 },
+      segments: [{ summary: { otherToolCount: 2, paseoCallCount: 2 } }],
     });
   });
 
@@ -346,7 +372,7 @@ describe("tool call detail-level projection", () => {
     const result = project({ level: "overview", head: calls });
 
     expect(result.groupsByHostId.get("1")).toMatchObject({
-      summary: { searchCount: 3, otherToolCount: 0, paseoCallCount: 3 },
+      segments: [{ summary: { searchCount: 3, otherToolCount: 0, paseoCallCount: 3 } }],
     });
   });
 
@@ -387,7 +413,7 @@ describe("tool call detail-level projection", () => {
     expect(second.groupsByHostId.get("1")).toBe(prepared.grouped.groupsByHostId.get("1"));
     expect(first.historyGroupUpdatesByHostId.size).toBe(0);
     expect(second.historyGroupUpdatesByHostId).toBe(first.historyGroupUpdatesByHostId);
-    expect(second.groupsByHostId.get("5")?.run.calls).toHaveLength(2);
+    expect(second.groupsByHostId.get("5")?.run.items).toHaveLength(2);
   });
 
   it("preserves projected history identity during assistant-only head updates", () => {
@@ -445,7 +471,7 @@ describe("tool call detail-level projection", () => {
     ]);
     expect(result.head).toEqual([]);
     expect(result.groupsByHostId.get("1")?.run).toMatchObject({
-      calls: [...tail.slice(1), ...head],
+      items: [...tail.slice(1), ...head],
       latest: head[1],
       isSealed: false,
     });
@@ -476,7 +502,60 @@ describe("tool call detail-level projection", () => {
     const result = project({ level: "overview", head: [singleCall, plan, speak] });
 
     expect(result.head).toEqual([singleCall, plan, speak]);
-    expect(result.groupsByHostId.get(singleCall.id)?.run.calls).toEqual([singleCall]);
+    expect(result.groupsByHostId.get(singleCall.id)?.run.items).toEqual([singleCall]);
     expect(result.groupsByHostId.size).toBe(1);
+  });
+
+  it("hosts reasoning and tool calls between replies as one group of segments", () => {
+    const items = [
+      thought("1"),
+      toolCall("2", { type: "shell", command: "one" }),
+      toolCall("3", { type: "shell", command: "two" }),
+      thought("4"),
+      toolCall("5", { type: "edit", filePath: "/repo/a.ts" }),
+    ];
+    const tail = [assistant("before"), ...items, assistant("after")];
+
+    const result = project({ level: "overview", tail });
+
+    expect(result.tail).toEqual([
+      tail[0],
+      expect.objectContaining({ id: "1", kind: "tool_call", timestamp: items[4]?.timestamp }),
+      tail[6],
+    ]);
+    expect(result.groupsByHostId.size).toBe(1);
+    expect(result.groupsByHostId.get("1")).toMatchObject({
+      run: { items, isSealed: true },
+      isLoading: false,
+      segments: [
+        { kind: "thought", id: "1", item: items[0] },
+        { kind: "tools", id: "2", calls: items.slice(1, 3), summary: { commandCount: 2 } },
+        { kind: "thought", id: "4", item: items[3] },
+        { kind: "tools", id: "5", summary: { editedFileCount: 1 } },
+      ],
+    });
+  });
+
+  it("keeps a streaming thought in the live head inside the retained group", () => {
+    const tail = [
+      assistant("before"),
+      thought("1"),
+      toolCall("2", { type: "shell", command: "one" }),
+    ];
+    const streaming = thought("3", "loading");
+
+    const result = project({ level: "overview", tail, head: [streaming], isTurnActive: false });
+
+    expect(result.head).toEqual([]);
+    expect(result.groupsByHostId.get("1")).toMatchObject({
+      run: { latest: streaming, isSealed: false },
+      isLoading: true,
+      segments: [
+        { kind: "thought", isLoading: false },
+        { kind: "tools", isLoading: false },
+        { kind: "thought", id: "3", isLoading: true },
+      ],
+    });
+    expect(result.historyGroupUpdatesByHostId.get("1")).toBe(result.groupsByHostId.get("1"));
   });
 });
