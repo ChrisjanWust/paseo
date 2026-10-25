@@ -36,7 +36,6 @@ export interface OverviewActivityGroup {
   mode: "overview";
   run: ActivityRun;
   segments: readonly OverviewSegment[];
-  isLoading: boolean;
 }
 
 function isPaseoCall(name: string, normalizedName: string): boolean {
@@ -124,6 +123,5 @@ export function buildOverviewGroup(run: ActivityRun): OverviewActivityGroup {
     mode: "overview",
     run,
     segments,
-    isLoading: segments.some((segment) => segment.isLoading),
   };
 }

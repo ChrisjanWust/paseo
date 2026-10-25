@@ -917,6 +917,9 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
     fontWeight: theme.fontWeight.normal,
     flexShrink: 0,
   },
+  labelFitContent: {
+    flexShrink: 1,
+  },
   labelActive: {
     color: theme.colors.foreground,
   },
@@ -2087,10 +2090,11 @@ export const ExpandableBadge = memo(function ExpandableBadge({
   const labelStyle = useMemo(
     () => [
       expandableBadgeStylesheet.label,
+      fitContent && expandableBadgeStylesheet.labelFitContent,
       isActive && expandableBadgeStylesheet.labelActive,
       isLoading && expandableBadgeStylesheet.labelLoading,
     ],
-    [isActive, isLoading],
+    [fitContent, isActive, isLoading],
   );
 
   const secondaryLabelStyle = useMemo(

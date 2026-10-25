@@ -816,7 +816,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
       [renderSingleToolCallItem],
     );
     const renderActivityGroup = useCallback(
-      (layoutItem: StreamLayoutItem, group: ToolCallDetailGroup) => {
+      (group: ToolCallDetailGroup) => {
         const groupId = group.run.id;
         const selectedSegmentId = selectedSegmentByGroupId.has(groupId)
           ? (selectedSegmentByGroupId.get(groupId) ?? null)
@@ -825,7 +825,6 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
           <OverviewActivityGroupView
             group={group}
             selectedSegmentId={selectedSegmentId}
-            isLastInSequence={layoutItem.isLastInToolSequence}
             onSelectedSegmentChange={setSelectedSegment}
             renderToolCalls={renderGroupedToolCalls}
           />
@@ -848,7 +847,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
           case "tool_call": {
             const group = getToolCallGroup(item.id);
             if (group) {
-              return renderActivityGroup(layoutItem, group);
+              return renderActivityGroup(group);
             }
             return item.kind === "thought"
               ? renderThoughtItem(layoutItem, item)

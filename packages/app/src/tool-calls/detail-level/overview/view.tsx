@@ -16,7 +16,6 @@ import { OverviewToolCallGroupSheet } from "./sheet";
 interface OverviewActivityGroupProps {
   group: OverviewActivityGroup;
   selectedSegmentId: string | null;
-  isLastInSequence: boolean;
   onSelectedSegmentChange: (groupId: string, segmentId: string | null) => void;
   renderToolCalls: (calls: readonly ToolCallItem[]) => ReactNode;
 }
@@ -155,7 +154,6 @@ function SelectedToolsSheet({
 export const OverviewActivityGroupView = memo(function OverviewActivityGroupView({
   group,
   selectedSegmentId,
-  isLastInSequence,
   onSelectedSegmentChange,
   renderToolCalls,
 }: OverviewActivityGroupProps) {
@@ -168,16 +166,13 @@ export const OverviewActivityGroupView = memo(function OverviewActivityGroupView
 
   let details: ReactNode = null;
   if (selected?.kind === "thought") {
-    details = <ThoughtSegmentDetails segment={selected} />;
+    details = <ThoughtSegmentDetails key={selected.id} segment={selected} />;
   } else if (selected?.kind === "tools" && !isCompact) {
     details = <ToolCallsScroll>{renderToolCalls(selected.calls)}</ToolCallsScroll>;
   }
 
   return (
-    <View
-      testID="tool-call-group"
-      style={isLastInSequence ? styles.containerLastInSequence : styles.container}
-    >
+    <View testID="tool-call-group" style={styles.container}>
       <View style={styles.chipRow}>
         {group.segments.map((segment) => (
           <SegmentChip
@@ -201,40 +196,35 @@ export const OverviewActivityGroupView = memo(function OverviewActivityGroupView
   );
 });
 
-const styles = StyleSheet.create((theme) => {
-  const container = {
+const styles = StyleSheet.create((theme) => ({
+  // Row gaps come from the stream layout, so the group adds no vertical margin of its own.
+  container: {
     marginHorizontal: -13,
-    marginBottom: theme.spacing[1],
-  };
-  return {
-    container,
-    containerLastInSequence: {
-      ...container,
-      marginBottom: theme.spacing[4],
-    },
-    chipRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      alignItems: "center",
-      columnGap: theme.spacing[1],
-    },
-    chip: {
-      marginHorizontal: 0,
-    },
-    thoughtDetail: {
-      marginTop: theme.spacing[1],
-      borderRadius: theme.borderRadius.lg,
-      borderWidth: theme.borderWidth[1],
-      borderColor: theme.colors.border,
-      overflow: "hidden",
-      ...(isWeb ? { cursor: "auto" as const, userSelect: "text" as const } : {}),
-    },
-    scroll: {
-      maxHeight: TOOL_CALL_GROUP_MAX_HEIGHT,
-    },
-    content: {
-      paddingTop: theme.spacing[1],
-      paddingHorizontal: 13,
-    },
-  };
-});
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    columnGap: theme.spacing[1],
+    rowGap: theme.spacing[1],
+  },
+  chip: {
+    marginHorizontal: 0,
+    maxWidth: "100%",
+  },
+  thoughtDetail: {
+    marginTop: theme.spacing[1],
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: theme.borderWidth[1],
+    borderColor: theme.colors.border,
+    overflow: "hidden",
+    ...(isWeb ? { cursor: "auto" as const, userSelect: "text" as const } : {}),
+  },
+  scroll: {
+    maxHeight: TOOL_CALL_GROUP_MAX_HEIGHT,
+  },
+  content: {
+    paddingTop: theme.spacing[1],
+    paddingHorizontal: 13,
+  },
+}));

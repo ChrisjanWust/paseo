@@ -149,7 +149,7 @@ describe("tool call detail-level projection", () => {
     ];
     const result = project({ level: "overview", head: calls, isTurnActive: true });
 
-    expect(result.groupsByHostId.get("1")?.isLoading).toBe(true);
+    expect(result.groupsByHostId.get("1")?.segments[0]?.isLoading).toBe(true);
   });
 
   it("builds a loading aggregate for a one-call run", () => {
@@ -161,8 +161,7 @@ describe("tool call detail-level projection", () => {
     }
 
     expect(group).toMatchObject({
-      isLoading: true,
-      segments: [{ summary: { commandCount: 1 } }],
+      segments: [{ isLoading: true, summary: { commandCount: 1 } }],
     });
   });
 
@@ -213,8 +212,7 @@ describe("tool call detail-level projection", () => {
 
     expect(result.groupsByHostId.get("1")).toMatchObject({
       run: { latest: calls[3], isSealed: false },
-      isLoading: true,
-      segments: [{ summary: { commandCount: 4 } }],
+      segments: [{ isLoading: true, summary: { commandCount: 4 } }],
     });
   });
 
@@ -263,7 +261,6 @@ describe("tool call detail-level projection", () => {
     expect(overview.groupsByHostId.get("1")).toEqual({
       mode: "overview",
       run: expect.any(Object),
-      isLoading: false,
       segments: [
         {
           kind: "tools",
@@ -526,7 +523,6 @@ describe("tool call detail-level projection", () => {
     expect(result.groupsByHostId.size).toBe(1);
     expect(result.groupsByHostId.get("1")).toMatchObject({
       run: { items, isSealed: true },
-      isLoading: false,
       segments: [
         { kind: "thought", id: "1", item: items[0] },
         { kind: "tools", id: "2", calls: items.slice(1, 3), summary: { commandCount: 2 } },
@@ -549,7 +545,6 @@ describe("tool call detail-level projection", () => {
     expect(result.head).toEqual([]);
     expect(result.groupsByHostId.get("1")).toMatchObject({
       run: { latest: streaming, isSealed: false },
-      isLoading: true,
       segments: [
         { kind: "thought", isLoading: false },
         { kind: "tools", isLoading: false },

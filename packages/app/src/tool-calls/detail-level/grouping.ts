@@ -185,6 +185,9 @@ export function groupLiveToolCalls<TGroup>(input: {
     pendingIncludesHead = false;
   };
 
+  // A thought streaming in the head joins the run hosted in history, so each reasoning delta
+  // revises that history row. Splitting it into its own head row would avoid the revision but
+  // make the strip jump when the thought settles into history.
   for (const item of input.head) {
     if (isActivityItem(item)) {
       if (pending.length === 0) {
