@@ -2080,6 +2080,7 @@ export const fr: TranslationResources = {
     output: "Sortie",
   },
   toolCallGroup: {
+    thinking: "Réflexion",
     editedFiles: {
       one: "{{count}} fichier modifié",
       other: "{{count}} fichiers modifiés",

@@ -2011,6 +2011,7 @@ export const zhCN: TranslationResources = {
     output: "输出",
   },
   toolCallGroup: {
+    thinking: "思考",
     editedFiles: {
       one: "编辑了 {{count}} 个文件",
       other: "编辑了 {{count}} 个文件",

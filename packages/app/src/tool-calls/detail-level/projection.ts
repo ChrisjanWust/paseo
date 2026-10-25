@@ -6,10 +6,10 @@ import {
   type GroupedHistory,
   type GroupedToolCalls,
 } from "./grouping";
-import { buildOverviewGroup, type OverviewToolCallGroup } from "./overview/model";
+import { buildOverviewGroup, type OverviewActivityGroup } from "./overview/model";
 
 export type { ToolCallDetailLevel } from "@/hooks/use-settings/storage";
-export type ToolCallDetailGroup = OverviewToolCallGroup;
+export type ToolCallDetailGroup = OverviewActivityGroup;
 
 export interface PreparedToolCallHistory {
   mode: "overview";

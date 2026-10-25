@@ -196,7 +196,11 @@ test("measures an overview heading that becomes loading after its idle mount", a
       idleGroupHandle,
     );
 
-    await group.click();
+    await group
+      .getByTestId("tool-call-group-chip")
+      .filter({ hasNotText: "Thinking" })
+      .last()
+      .click();
     const runningChild = page.getByTestId("tool-call-badge").last();
     await expect(runningChild).toBeVisible();
     const header = await readShimmerEvidence(group);

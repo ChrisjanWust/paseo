@@ -41,7 +41,7 @@ import {
   type InlinePathTarget,
 } from "@/components/message";
 import { PlanCard } from "@/components/plan-card";
-import type { StreamItem } from "@/types/stream";
+import type { StreamItem, ToolCallItem } from "@/types/stream";
 import type { PendingMessageSubmission } from "@/composer/submission/model";
 import type { TurnPresentation } from "@/timeline/turn-liveness";
 import type { PendingPermission } from "@/types/shared";
@@ -63,7 +63,8 @@ import { ToolCallDetailsContent } from "@/components/tool-call-details";
 import { QuestionFormCard } from "@/components/question-form-card";
 import { ToolCallSheetProvider } from "@/components/tool-call-sheet";
 import { createStreamPresentation, getStreamItemMessageId } from "./presentation";
-import { OverviewToolCallGroupView } from "@/tool-calls/detail-level/overview/view";
+import type { ToolCallDetailGroup } from "@/tool-calls/detail-level/projection";
+import { OverviewActivityGroupView } from "@/tool-calls/detail-level/overview/view";
 import { type AgentStreamRenderModel, buildAgentStreamRenderModel } from "./model";
 import { resolveStreamRenderStrategy } from "./strategy-resolver";
 import { type StreamSegmentRenderers, type StreamViewportHandle } from "./strategy";
@@ -306,6 +307,14 @@ function useRetainedValue<T>(value: T, active: boolean): T {
 const EMPTY_PENDING_MESSAGE_SUBMISSIONS: readonly PendingMessageSubmission[] = [];
 const GROUPED_TOOL_CALL_DETAIL_MAX_HEIGHT = 200;
 
+// With auto-expand reasoning on, a group opens on its latest thought until the user picks a chip.
+function getDefaultSegmentId(group: ToolCallDetailGroup, autoExpandReasoning: boolean) {
+  if (!autoExpandReasoning) {
+    return null;
+  }
+  return group.segments.findLast((segment) => segment.kind === "thought")?.id ?? null;
+}
+
 function resolveBottomOverlayControlOffset(clearance: number | undefined): number {
   return Math.max(16, clearance ?? 0);
 }
@@ -355,9 +364,10 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     const [expandedInlineToolCallIds, setExpandedInlineToolCallIds] = useState<Set<string>>(
       new Set(),
     );
-    const [expandedToolCallGroupIds, setExpandedToolCallGroupIds] = useState<Set<string>>(
-      new Set(),
-    );
+    // Groups the user opened or closed a chip in. Groups without an entry use the default.
+    const [selectedSegmentByGroupId, setSelectedSegmentByGroupId] = useState<
+      ReadonlyMap<string, string | null>
+    >(new Map());
 
     // Get serverId (fallback to agent's serverId if not provided)
     const resolvedServerId = serverId ?? context.serverId ?? "";
@@ -421,7 +431,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     useEffect(() => {
       setIsNearBottom(true);
       setExpandedInlineToolCallIds(new Set());
-      setExpandedToolCallGroupIds(new Set());
+      setSelectedSegmentByGroupId(new Map());
     }, [agentId]);
 
     const isActive = useRetainedPanelActive();
@@ -652,16 +662,8 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
       [streamRenderStrategy],
     );
 
-    const setToolCallGroupExpanded = useCallback((groupId: string, expanded: boolean) => {
-      setExpandedToolCallGroupIds((previous) => {
-        const next = new Set(previous);
-        if (expanded) {
-          next.add(groupId);
-        } else {
-          next.delete(groupId);
-        }
-        return next;
-      });
+    const setSelectedSegment = useCallback((groupId: string, segmentId: string | null) => {
+      setSelectedSegmentByGroupId((previous) => new Map(previous).set(groupId, segmentId));
     }, []);
 
     const renderUserMessageItem = useCallback(
@@ -800,40 +802,35 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     const getToolCallGroup = useStableEvent((hostId: string) =>
       presentation.groupsByHostId.get(hostId),
     );
-    const renderToolCallItem = useCallback(
-      (layoutItem: StreamLayoutItem, item: Extract<StreamItem, { kind: "tool_call" }>) => {
-        const group = getToolCallGroup(item.id);
-        if (!group) {
-          return renderSingleToolCallItem(item, layoutItem.isLastInToolSequence);
-        }
-        const expanded = expandedToolCallGroupIds.has(group.run.id);
+    const renderGroupedToolCalls = useCallback(
+      (calls: readonly ToolCallItem[]) =>
+        calls.map((call, index) => (
+          <React.Fragment key={call.id}>
+            {renderSingleToolCallItem(
+              call,
+              index === calls.length - 1,
+              GROUPED_TOOL_CALL_DETAIL_MAX_HEIGHT,
+            )}
+          </React.Fragment>
+        )),
+      [renderSingleToolCallItem],
+    );
+    const renderActivityGroup = useCallback(
+      (group: ToolCallDetailGroup) => {
+        const groupId = group.run.id;
+        const selectedSegmentId = selectedSegmentByGroupId.has(groupId)
+          ? (selectedSegmentByGroupId.get(groupId) ?? null)
+          : getDefaultSegmentId(group, autoExpandReasoning);
         return (
-          <OverviewToolCallGroupView
+          <OverviewActivityGroupView
             group={group}
-            expanded={expanded}
-            isLastInSequence={layoutItem.isLastInToolSequence}
-            onExpandedChange={setToolCallGroupExpanded}
-          >
-            {expanded
-              ? group.run.calls.map((call, index) => (
-                  <React.Fragment key={call.id}>
-                    {renderSingleToolCallItem(
-                      call,
-                      index === group.run.calls.length - 1,
-                      GROUPED_TOOL_CALL_DETAIL_MAX_HEIGHT,
-                    )}
-                  </React.Fragment>
-                ))
-              : null}
-          </OverviewToolCallGroupView>
+            selectedSegmentId={selectedSegmentId}
+            onSelectedSegmentChange={setSelectedSegment}
+            renderToolCalls={renderGroupedToolCalls}
+          />
         );
       },
-      [
-        expandedToolCallGroupIds,
-        getToolCallGroup,
-        renderSingleToolCallItem,
-        setToolCallGroupExpanded,
-      ],
+      [autoExpandReasoning, renderGroupedToolCalls, selectedSegmentByGroupId, setSelectedSegment],
     );
 
     const renderStreamItemContent = useCallback(
@@ -847,10 +844,15 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
             return renderAssistantMessageItem(layoutItem, item);
 
           case "thought":
-            return renderThoughtItem(layoutItem, item);
-
-          case "tool_call":
-            return renderToolCallItem(layoutItem, item);
+          case "tool_call": {
+            const group = getToolCallGroup(item.id);
+            if (group) {
+              return renderActivityGroup(group);
+            }
+            return item.kind === "thought"
+              ? renderThoughtItem(layoutItem, item)
+              : renderSingleToolCallItem(item, layoutItem.isLastInToolSequence);
+          }
 
           case "notification":
             return <Notification level={item.level} message={item.message} />;
@@ -881,7 +883,9 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         renderUserMessageItem,
         renderAssistantMessageItem,
         renderThoughtItem,
-        renderToolCallItem,
+        getToolCallGroup,
+        renderActivityGroup,
+        renderSingleToolCallItem,
         resolvedServerId,
       ],
     );
@@ -1064,10 +1068,10 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     const historyRowRevision = useMemo(
       () => ({
         contentById: presentation.historyGroupUpdatesByHostId,
-        displayStateById: expandedToolCallGroupIds,
+        displayStateById: selectedSegmentByGroupId,
         globalDisplayState: isMobile,
       }),
-      [expandedToolCallGroupIds, isMobile, presentation.historyGroupUpdatesByHostId],
+      [selectedSegmentByGroupId, isMobile, presentation.historyGroupUpdatesByHostId],
     );
 
     const findItems = useMemo(
@@ -1092,7 +1096,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
                   agentId,
                   segments: renderModel.segments,
                   historyRowRevision,
-                  liveHeadRowRevision: expandedToolCallGroupIds,
+                  liveHeadRowRevision: selectedSegmentByGroupId,
                   boundary,
                   renderers,
                   listEmptyComponent,

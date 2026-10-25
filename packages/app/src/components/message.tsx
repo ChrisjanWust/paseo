@@ -896,6 +896,12 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
     alignItems: "center",
     overflow: "hidden",
   },
+  labelRowFitContent: {
+    flexShrink: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    overflow: "hidden",
+  },
   iconBadge: {
     width: 22,
     height: 22,
@@ -910,6 +916,9 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.base,
     fontWeight: theme.fontWeight.normal,
     flexShrink: 0,
+  },
+  labelFitContent: {
+    flexShrink: 1,
   },
   labelActive: {
     color: theme.colors.foreground,
@@ -1516,6 +1525,8 @@ interface ExpandableBadgeProps {
   isLastInSequence?: boolean;
   disableOuterSpacing?: boolean;
   borderlessWhenExpanded?: boolean;
+  /** Size the badge to its label instead of filling the row, for badges laid out side by side. */
+  fitContent?: boolean;
   testID?: string;
 }
 
@@ -1584,6 +1595,7 @@ function ExpandableBadgeWebShimmerOverlay({
 }
 
 interface ExpandableBadgeLabelRowProps {
+  fitContent: boolean;
   label: string;
   labelStyle: StyleProp<TextStyle>;
   secondaryLabel?: string;
@@ -1610,6 +1622,7 @@ interface ExpandableBadgeLabelRowProps {
 }
 
 function ExpandableBadgeLabelRow({
+  fitContent,
   label,
   labelStyle,
   secondaryLabel,
@@ -1637,7 +1650,11 @@ function ExpandableBadgeLabelRow({
   const { t } = useTranslation();
   return (
     <View
-      style={expandableBadgeStylesheet.labelRow}
+      style={
+        fitContent
+          ? expandableBadgeStylesheet.labelRowFitContent
+          : expandableBadgeStylesheet.labelRow
+      }
       onLayout={shouldMeasureNativeShimmer ? onLabelRowLayout : undefined}
     >
       <Text
@@ -1879,6 +1896,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
   isLastInSequence = false,
   disableOuterSpacing,
   borderlessWhenExpanded = false,
+  fitContent = false,
   testID,
 }: ExpandableBadgeProps) {
   const resolvedDisableOuterSpacing = useDisableOuterSpacing(disableOuterSpacing);
@@ -2072,10 +2090,11 @@ export const ExpandableBadge = memo(function ExpandableBadge({
   const labelStyle = useMemo(
     () => [
       expandableBadgeStylesheet.label,
+      fitContent && expandableBadgeStylesheet.labelFitContent,
       isActive && expandableBadgeStylesheet.labelActive,
       isLoading && expandableBadgeStylesheet.labelLoading,
     ],
-    [isActive, isLoading],
+    [fitContent, isActive, isLoading],
   );
 
   const secondaryLabelStyle = useMemo(
@@ -2149,6 +2168,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
         <View style={expandableBadgeStylesheet.headerRow}>
           <View style={expandableBadgeStylesheet.iconBadge}>{iconSlotNode}</View>
           <ExpandableBadgeLabelRow
+            fitContent={fitContent}
             label={label}
             labelStyle={labelStyle}
             secondaryLabel={secondaryLabel}
@@ -2200,6 +2220,7 @@ function areExpandableBadgePropsEqual(previous: ExpandableBadgeProps, next: Expa
   if (previous.isLastInSequence !== next.isLastInSequence) return false;
   if (previous.disableOuterSpacing !== next.disableOuterSpacing) return false;
   if (previous.borderlessWhenExpanded !== next.borderlessWhenExpanded) return false;
+  if (previous.fitContent !== next.fitContent) return false;
   if (previous.testID !== next.testID) return false;
   if (previous.onToggle !== next.onToggle) return false;
   if (previous.onOpenFile !== next.onOpenFile) return false;
