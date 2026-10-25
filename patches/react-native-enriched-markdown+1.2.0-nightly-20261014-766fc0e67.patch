@@ -2450,8 +2450,8 @@ diff --git a/node_modules/react-native-enriched-markdown/src/types/MarkdownRende
 new file mode 100644
 --- /dev/null
 +++ b/node_modules/react-native-enriched-markdown/src/types/MarkdownRenderers.ts
-@@ -0,0 +1,21 @@
-+import type { ComponentType, ComponentProps, ReactNode } from 'react';
+@@ -0,0 +1,31 @@
++import type { ComponentType, ComponentProps, CSSProperties, ReactNode } from 'react';
 +import type { LinkPressEvent } from './events';
 +
 +export interface CodeBlockRendererProps {
@@ -2467,17 +2467,27 @@ new file mode 100644
 +  children: ReactNode;
 +}
 +
++export interface TableRendererProps {
++  /** The rendered table element. */
++  children: ReactNode;
++  /** The library's wrapper style: block spacing, horizontal scroll and corner radius. */
++  wrapperStyle: CSSProperties;
++  /** True when the table is a direct child of the document, not inside a list, quote or admonition. */
++  topLevel: boolean;
++}
++
 +/** Custom web components. Overrides own their styling and interactions. */
 +export interface MarkdownRenderers {
 +  codeBlock?: ComponentType<CodeBlockRendererProps>;
 +  link?: ComponentType<LinkRendererProps>;
++  table?: ComponentType<TableRendererProps>;
 +}
 diff --git a/node_modules/react-native-enriched-markdown/lib/typescript/src/types/MarkdownRenderers.d.ts b/node_modules/react-native-enriched-markdown/lib/typescript/src/types/MarkdownRenderers.d.ts
 new file mode 100644
 --- /dev/null
 +++ b/node_modules/react-native-enriched-markdown/lib/typescript/src/types/MarkdownRenderers.d.ts
-@@ -0,0 +1,20 @@
-+import type { ComponentType, ComponentProps, ReactNode } from 'react';
+@@ -0,0 +1,30 @@
++import type { ComponentType, ComponentProps, CSSProperties, ReactNode } from 'react';
 +import type { LinkPressEvent } from './events';
 +export interface CodeBlockRendererProps {
 +    /** Code content, including its original trailing whitespace. */
@@ -2491,21 +2501,32 @@ new file mode 100644
 +  children: ReactNode;
 +}
 +
++export interface TableRendererProps {
++  /** The rendered table element. */
++  children: ReactNode;
++  /** The library's wrapper style: block spacing, horizontal scroll and corner radius. */
++  wrapperStyle: CSSProperties;
++  /** True when the table is a direct child of the document, not inside a list, quote or admonition. */
++  topLevel: boolean;
++}
++
 +/** Custom web components. Overrides own their styling and interactions. */
 +export interface MarkdownRenderers {
 +    codeBlock?: ComponentType<CodeBlockRendererProps>;
 +  link?: ComponentType<LinkRendererProps>;
++  table?: ComponentType<TableRendererProps>;
 +}
 +//# sourceMappingURL=MarkdownRenderers.d.ts.map
 \ No newline at end of file
 diff --git a/node_modules/react-native-enriched-markdown/src/index.tsx b/node_modules/react-native-enriched-markdown/src/index.tsx
 --- a/node_modules/react-native-enriched-markdown/src/index.tsx
 +++ b/node_modules/react-native-enriched-markdown/src/index.tsx
-@@ -1,3 +1,8 @@
+@@ -1,3 +1,9 @@
 +export type {
 +  MarkdownRenderers,
 +  CodeBlockRendererProps,
 +  LinkRendererProps,
++  TableRendererProps,
 +} from './types/MarkdownRenderers';
  export type { LinkVariantStyle, LinkPillStyle } from './types/MarkdownStyle';
  export type { LinkPillContent } from './types/MarkdownTextProps';
@@ -2514,7 +2535,7 @@ diff --git a/node_modules/react-native-enriched-markdown/lib/typescript/src/inde
 --- a/node_modules/react-native-enriched-markdown/lib/typescript/src/index.d.ts
 +++ b/node_modules/react-native-enriched-markdown/lib/typescript/src/index.d.ts
 @@ -1,3 +1,4 @@
-+export type { MarkdownRenderers, CodeBlockRendererProps, LinkRendererProps, } from './types/MarkdownRenderers';
++export type { MarkdownRenderers, CodeBlockRendererProps, LinkRendererProps, TableRendererProps, } from './types/MarkdownRenderers';
  export type { LinkVariantStyle, LinkPillStyle } from './types/MarkdownStyle';
  export type { LinkPillContent } from './types/MarkdownTextProps';
  export type { LinkContextMenuItem, LinkRecognition, } from './types/MarkdownTextProps';
@@ -2538,11 +2559,12 @@ diff --git a/node_modules/react-native-enriched-markdown/src/types/MarkdownTextP
 diff --git a/node_modules/react-native-enriched-markdown/src/index.web.tsx b/node_modules/react-native-enriched-markdown/src/index.web.tsx
 --- a/node_modules/react-native-enriched-markdown/src/index.web.tsx
 +++ b/node_modules/react-native-enriched-markdown/src/index.web.tsx
-@@ -1,3 +1,8 @@
+@@ -1,3 +1,9 @@
 +export type {
 +  MarkdownRenderers,
 +  CodeBlockRendererProps,
 +  LinkRendererProps,
++  TableRendererProps,
 +} from './types/MarkdownRenderers';
  export { EnrichedMarkdownText, default } from './web/EnrichedMarkdownText';
  export type { EnrichedMarkdownTextProps } from './types/MarkdownTextProps.web';
@@ -2551,7 +2573,7 @@ diff --git a/node_modules/react-native-enriched-markdown/lib/typescript/src/inde
 --- a/node_modules/react-native-enriched-markdown/lib/typescript/src/index.web.d.ts
 +++ b/node_modules/react-native-enriched-markdown/lib/typescript/src/index.web.d.ts
 @@ -1,3 +1,4 @@
-+export type { MarkdownRenderers, CodeBlockRendererProps, LinkRendererProps, } from './types/MarkdownRenderers';
++export type { MarkdownRenderers, CodeBlockRendererProps, LinkRendererProps, TableRendererProps, } from './types/MarkdownRenderers';
  export { EnrichedMarkdownText, default } from './web/EnrichedMarkdownText';
  export type { EnrichedMarkdownTextProps } from './types/MarkdownTextProps.web';
  export type { MarkdownStyle, Md4cFlags } from './types/MarkdownStyle';
@@ -3138,3 +3160,71 @@ new file mode 100644
 +    }
 +  }
 +}
+diff --git a/node_modules/react-native-enriched-markdown/lib/module/web/renderers/TableRenderers.js b/node_modules/react-native-enriched-markdown/lib/module/web/renderers/TableRenderers.js
+--- a/node_modules/react-native-enriched-markdown/lib/module/web/renderers/TableRenderers.js
++++ b/node_modules/react-native-enriched-markdown/lib/module/web/renderers/TableRenderers.js
+@@ -5,14 +5,26 @@
+ function TableRenderer({
+   node,
+   styles,
++  parentType,
++  capabilities,
+   renderChildren
+ }) {
++  const table = /*#__PURE__*/_jsx("table", {
++    style: styles.table,
++    children: renderChildren(node)
++  });
++  const CustomTable = capabilities.renderers?.table;
++  if (CustomTable) {
++    // Top-level blocks render without a parentType.
++    return /*#__PURE__*/_jsx(CustomTable, {
++      wrapperStyle: styles.tableWrapper,
++      topLevel: parentType == null,
++      children: table
++    });
++  }
+   return /*#__PURE__*/_jsx("div", {
+     style: styles.tableWrapper,
+-    children: /*#__PURE__*/_jsx("table", {
+-      style: styles.table,
+-      children: renderChildren(node)
+-    })
++    children: table
+   });
+ }
+ function TableHeadRenderer({
+diff --git a/node_modules/react-native-enriched-markdown/src/web/renderers/TableRenderers.tsx b/node_modules/react-native-enriched-markdown/src/web/renderers/TableRenderers.tsx
+--- a/node_modules/react-native-enriched-markdown/src/web/renderers/TableRenderers.tsx
++++ b/node_modules/react-native-enriched-markdown/src/web/renderers/TableRenderers.tsx
+@@ -1,12 +1,24 @@
+ import type { RendererProps, RendererMap } from '../types';
+ import { tableBodyRowStyle } from '../styles';
+ 
+-function TableRenderer({ node, styles, renderChildren }: RendererProps) {
+-  return (
+-    <div style={styles.tableWrapper}>
+-      <table style={styles.table}>{renderChildren(node)}</table>
+-    </div>
+-  );
++function TableRenderer({
++  node,
++  styles,
++  parentType,
++  capabilities,
++  renderChildren,
++}: RendererProps) {
++  const table = <table style={styles.table}>{renderChildren(node)}</table>;
++  const CustomTable = capabilities.renderers?.table;
++  if (CustomTable) {
++    // Top-level blocks render without a parentType.
++    return (
++      <CustomTable wrapperStyle={styles.tableWrapper} topLevel={parentType == null}>
++        {table}
++      </CustomTable>
++    );
++  }
++  return <div style={styles.tableWrapper}>{table}</div>;
+ }
+ 
+ function TableHeadRenderer({ node, renderChildren }: RendererProps) {

@@ -1,4 +1,6 @@
 import { MarkdownRenderer } from "@/components/markdown/renderer";
+import { MarkdownTableGutterMeasure } from "@/components/markdown/table-gutter";
+import { resolveContentMaxWidth, useSettings } from "@/hooks/use-settings";
 import { resolveMarkdownFileDirectory } from "@/components/markdown/image-source";
 import {
   AssistantFileLinkResolverProvider,
@@ -26,44 +28,47 @@ export function FileMarkdownPreview({
   const document = useMemo(() => parseMarkdownPreviewDocument(source), [source]);
   const environment = useAssistantFileLinkEnvironment();
   const relativePathBase = resolveMarkdownFileDirectory({ markdownPath: filePath, workspaceRoot });
+  const contentMaxWidth = useSettings(resolveContentMaxWidth);
 
   return (
     <View style={styles.outerGutter}>
-      <View style={styles.readingFrame} testID="markdown-preview-frame">
-        {document.frontMatter.length > 0 ? (
-          <View style={styles.frontMatterTable} testID="markdown-front-matter">
-            {document.frontMatter.map((row, index) => (
-              <View
-                key={row.key}
-                style={[styles.frontMatterRow, index > 0 && styles.frontMatterRowBorder]}
-              >
-                <View style={styles.frontMatterKeyCell}>
-                  <Text selectable style={styles.frontMatterKey}>
-                    {row.key}
-                  </Text>
+      <MarkdownTableGutterMeasure contentMaxWidth={contentMaxWidth}>
+        <View style={styles.readingFrame} testID="markdown-preview-frame">
+          {document.frontMatter.length > 0 ? (
+            <View style={styles.frontMatterTable} testID="markdown-front-matter">
+              {document.frontMatter.map((row, index) => (
+                <View
+                  key={row.key}
+                  style={[styles.frontMatterRow, index > 0 && styles.frontMatterRowBorder]}
+                >
+                  <View style={styles.frontMatterKeyCell}>
+                    <Text selectable style={styles.frontMatterKey}>
+                      {row.key}
+                    </Text>
+                  </View>
+                  <View style={styles.frontMatterValueCell}>
+                    <Text selectable style={styles.frontMatterValue}>
+                      {row.value}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.frontMatterValueCell}>
-                  <Text selectable style={styles.frontMatterValue}>
-                    {row.value}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        ) : null}
-        <AssistantFileLinkResolverProvider
-          {...environment}
-          relativePathBase={relativePathBase ?? undefined}
-        >
-          <MarkdownRenderer
-            text={document.body}
-            filePath={filePath}
-            workspaceRoot={workspaceRoot}
-            client={client}
-            serverId={serverId}
-          />
-        </AssistantFileLinkResolverProvider>
-      </View>
+              ))}
+            </View>
+          ) : null}
+          <AssistantFileLinkResolverProvider
+            {...environment}
+            relativePathBase={relativePathBase ?? undefined}
+          >
+            <MarkdownRenderer
+              text={document.body}
+              filePath={filePath}
+              workspaceRoot={workspaceRoot}
+              client={client}
+              serverId={serverId}
+            />
+          </AssistantFileLinkResolverProvider>
+        </View>
+      </MarkdownTableGutterMeasure>
     </View>
   );
 }

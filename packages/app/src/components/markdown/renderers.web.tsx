@@ -1,9 +1,18 @@
 import { Text } from "react-native";
-import { forwardRef, useCallback, useMemo, useState, type ComponentProps } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ComponentProps,
+  type CSSProperties,
+} from "react";
 import type {
   CodeBlockRendererProps,
   LinkRendererProps,
   MarkdownRenderers,
+  TableRendererProps,
 } from "react-native-enriched-markdown";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { useFileLink } from "@/assistant-file-links";
@@ -12,6 +21,7 @@ import { HighlightedCodeBlock } from "@/components/highlighted-code-block";
 import type { Theme } from "@/styles/theme";
 import { MermaidFence } from "./fence/mermaid";
 import { markdownLinkSource } from "./source";
+import { MarkdownTableGutterContext } from "./table-gutter";
 
 const ThemedCodeBlock = withUnistyles(HighlightedCodeBlock);
 const codeStyle = (theme: Theme) => ({
@@ -93,4 +103,49 @@ const styles = StyleSheet.create((theme) => ({
   },
 }));
 
-export const WEB_RENDERERS: MarkdownRenderers = { codeBlock: WebCodeBlock, link: WebLink };
+// The browser sizes the columns to their content. A narrow table stays aligned with the text;
+// a wide one grows evenly into the pane gutter on both sides, and scrolls once its columns can
+// no longer shrink. The row spans the text column plus both gutters: the leading spacer caps at
+// one gutter, so free space beyond it goes to the trailing spacer.
+function WebTable({ children, wrapperStyle, topLevel }: TableRendererProps) {
+  const paneGutter = useContext(MarkdownTableGutterContext);
+  const gutter = topLevel ? paneGutter : 0;
+  const rowStyle = useMemo<CSSProperties>(
+    () => ({
+      display: "flex",
+      marginTop: wrapperStyle.marginTop,
+      marginBottom: wrapperStyle.marginBottom,
+      marginLeft: -gutter,
+      marginRight: -gutter,
+    }),
+    [gutter, wrapperStyle.marginTop, wrapperStyle.marginBottom],
+  );
+  const leadingStyle = useMemo<CSSProperties>(
+    () => ({ flex: "1 1 0", maxWidth: gutter }),
+    [gutter],
+  );
+  const scrollStyle = useMemo<CSSProperties>(
+    () => ({
+      flex: "0 1 auto",
+      minWidth: 0,
+      overflowX: "auto",
+      overflowY: "hidden",
+      borderRadius: wrapperStyle.borderRadius,
+    }),
+    [wrapperStyle.borderRadius],
+  );
+  return (
+    <div style={rowStyle} data-testid="markdown-table">
+      <div style={leadingStyle} />
+      <div style={scrollStyle}>{children}</div>
+      <div style={TRAILING_SPACER_STYLE} />
+    </div>
+  );
+}
+const TRAILING_SPACER_STYLE: CSSProperties = { flex: "1 1 0" };
+
+export const WEB_RENDERERS: MarkdownRenderers = {
+  codeBlock: WebCodeBlock,
+  link: WebLink,
+  table: WebTable,
+};
