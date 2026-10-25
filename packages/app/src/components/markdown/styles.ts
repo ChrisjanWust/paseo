@@ -89,8 +89,6 @@ export function createMarkdownStyles(
         headerTextColor: theme.colors.foreground,
         rowEvenBackgroundColor: theme.colors.surface0,
         rowOddBackgroundColor: theme.colors.surface1,
-        // On web, any alignment also sizes the table to its content instead of the full width.
-        align: "left",
       },
       taskList: {
         checkedTextColor: theme.colors.foregroundMuted,

@@ -135,7 +135,7 @@ function WebTable({ children, wrapperStyle, topLevel }: TableRendererProps) {
     [wrapperStyle.borderRadius],
   );
   return (
-    <div style={rowStyle} data-testid="markdown-table">
+    <div style={rowStyle}>
       <div style={leadingStyle} />
       <div style={scrollStyle}>{children}</div>
       <div style={TRAILING_SPACER_STYLE} />

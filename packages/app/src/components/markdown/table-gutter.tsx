@@ -1,6 +1,7 @@
 import { createContext, useCallback, useState, type ReactNode } from "react";
 import { View, type LayoutChangeEvent, type ViewStyle } from "react-native";
 import { isWeb } from "@/constants/platform";
+import { readMeasuredWidth } from "@/hooks/use-container-width";
 
 // Keeps a widened table clear of the pane edge and of the chat outline rail.
 const PANE_EDGE_INSET = 48;
@@ -14,6 +15,8 @@ export function resolveMarkdownTableGutter(input: {
 }
 
 // Read by the web table renderer. Native keeps it at zero: the library draws native tables.
+// Only renderers that opt in with `wideTables` pass it on, so cards in the stream keep their
+// tables inside their box.
 export const MarkdownTableGutterContext = createContext(0);
 
 /** Measures the pane around a centered reading column and shares the table gutter with it. */
@@ -26,7 +29,9 @@ export function MarkdownTableGutterMeasure({
 }) {
   const [paneWidth, setPaneWidth] = useState(0);
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
-    setPaneWidth(event.nativeEvent.layout.width);
+    // A retained tab hidden with display: none reports 0; keep the last real width.
+    const width = readMeasuredWidth(event);
+    if (width !== null) setPaneWidth(width);
   }, []);
   if (!isWeb) return children;
   const gutter = resolveMarkdownTableGutter({ paneWidth, contentMaxWidth });

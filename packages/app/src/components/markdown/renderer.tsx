@@ -16,6 +16,7 @@ import { createMarkdownStyles } from "./styles";
 import { PENDING_MARKDOWN_IMAGE } from "./source";
 import { splitStreamingMarkdown } from "./streaming";
 import { useMarkdownSource, type MarkdownImageContext } from "./images";
+import { MarkdownTableGutterContext } from "./table-gutter";
 
 import { MermaidFence, MermaidStreamingContext, splitMermaidFences } from "./fence/mermaid";
 
@@ -32,11 +33,22 @@ export interface MarkdownRendererProps extends MarkdownImageContext {
   text: string;
   compact?: boolean;
   streaming?: boolean;
+  /** Lets wide top-level tables grow into the pane gutter. For a document in the pane's reading column. */
+  wideTables?: boolean;
   onLinkPress?: (url: string) => unknown;
 }
 
 /** All Markdown surfaces share the same engine and source adaptation. */
-export const MarkdownRenderer = memo(function MarkdownRenderer(props: MarkdownRendererProps) {
+export const MarkdownRenderer = memo(function MarkdownRenderer({
+  wideTables = false,
+  ...props
+}: MarkdownRendererProps) {
+  const content = <MarkdownDocument {...props} />;
+  if (wideTables) return content;
+  return <MarkdownTableGutterContext value={0}>{content}</MarkdownTableGutterContext>;
+});
+
+function MarkdownDocument(props: Omit<MarkdownRendererProps, "wideTables">) {
   const streaming = !isWeb && !!props.streaming;
   // Only completed lines affect block closure. Do not run mdast on every reveal frame.
   const completeLines = streaming ? props.text.slice(0, props.text.lastIndexOf("\n") + 1) : "";
@@ -51,7 +63,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(props: MarkdownRe
       <MarkdownPart {...props} text={props.text.slice(boundary)} />
     </MarkdownBlockStack>
   );
-});
+}
 
 const MarkdownPart = memo(function MarkdownPart({
   text,
