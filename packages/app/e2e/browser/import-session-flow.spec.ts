@@ -128,7 +128,6 @@ test("an open Import Session row keeps its age current", async ({ page }) => {
   await page.clock.install({ time: scenario.importSessionTimestamp + 60_000 });
   const flow = new ImportSessionFlow(page);
   await flow.openWorkspace(scenario.project.workspaceId, { width: 390, height: 844 });
-  await flow.revealMobileEntryPoint();
   await flow.openGlobally();
 
   const row = page.getByTestId(`import-session-session-claude-${scenario.importSessionId}`);
@@ -141,13 +140,13 @@ test("captures the compact import-session journey", async ({ page }, testInfo) =
   const flow = new ImportSessionFlow(page);
   await flow.openWorkspace(scenario.project.workspaceId, { width: 390, height: 844 });
 
-  await test.step("the mobile sidebar exposes import in its footer", async () => {
-    await flow.revealMobileEntryPoint();
-    await capture(page, testInfo, "01-mobile-sidebar-footer.png");
+  await test.step("the new workspace screen offers import at the top", async () => {
+    await flow.revealNewWorkspaceEntryPoint();
+    await capture(page, testInfo, "01-mobile-new-workspace-import.png");
   });
 
   await test.step("the host-wide sheet is newest first and fits its provider filter", async () => {
-    await flow.openGlobally();
+    await flow.openFromNewWorkspace();
     await flow.expectScope("Sessions on", false);
     await flow.expectRows({
       first: [scenario.importSessionId, "fixture-worktree", "fixture-unrelated"],
@@ -183,6 +182,7 @@ test("captures the compact import-session journey", async ({ page }, testInfo) =
   await test.step("the selected row imports and opens the hydrated transcript", async () => {
     await flow.importSession(scenario.importSessionId);
     await flow.expectTranscript("Review the invoice migration", "The fixture transcript is ready.");
+    await expect(page.getByRole("button", { name: "Open menu", exact: true })).toBeVisible();
     await capture(page, testInfo, "08-mobile-agent-after-import.png");
   });
 

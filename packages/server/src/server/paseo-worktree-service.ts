@@ -34,6 +34,8 @@ export interface CreatePaseoWorktreeInput extends CreateWorktreeCoreInput {
   projectId?: string;
   title?: string;
   scheduleId?: string;
+  background?: boolean;
+  callerWorkspaceId?: string;
 }
 
 export interface CreatePaseoWorktreeResult {
@@ -102,6 +104,8 @@ async function createPaseoWorktreeWithPriority(
       baseBranch: createdWorktree.worktree.comparisonBaseRef,
       title: input.title?.trim() || resolveFirstAgentPromptTitle(input.firstAgentContext),
       expectsInitialAgent: Boolean(input.firstAgentContext),
+      background: input.background,
+      callerWorkspaceId: input.callerWorkspaceId,
       ...(createdWorktree.intent.kind === "checkout-change-request" &&
       createdWorktree.intent.headRepository
         ? {
@@ -133,7 +137,7 @@ async function createPaseoWorktreeWithPriority(
       {
         cwd: createdWorktree.repoRoot,
         worktreePath: createdWorktree.worktree.worktreePath,
-        ...(input.runSetup === false ? { teardownCwds: [] } : {}),
+        teardownCwds: [],
         paseoHome: input.paseoHome,
         worktreesBaseRoot: input.worktreesRoot,
       },

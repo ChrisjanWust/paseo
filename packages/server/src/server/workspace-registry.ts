@@ -104,6 +104,8 @@ const PersistedWorkspaceRecordSchema = z.object({
   scheduleId: z.string().optional(),
   labels: z.array(z.string()).optional(),
   untrustedSource: UntrustedWorkspaceSourceSchema.optional(),
+  // Public discovery visibility. Contents retain their ordinary lifecycle.
+  background: z.boolean().optional().default(false),
 });
 
 export type PersistedProjectRecord = z.infer<typeof PersistedProjectRecordSchema>;
@@ -585,7 +587,7 @@ export class FileBackedWorkspaceRegistry
   override async remove(workspaceId: string): Promise<void> {
     const workspace = await this.removeIfPresent(workspaceId);
     if (!workspace) return;
-    await this.notifyMutation({ kind: "remove", workspaceId, workspace: null });
+    await this.notifyMutation({ kind: "remove", workspaceId, workspace });
   }
 
   async commitWorkspaceLabelMutation<TResult>(input: {
@@ -687,9 +689,12 @@ export function createPersistedWorkspaceRecord(input: {
   scheduleId?: string;
   labels?: string[];
   untrustedSource?: UntrustedWorkspaceSource;
+  background?: boolean;
 }): PersistedWorkspaceRecord {
+  const { background, ...rest } = input;
   return PersistedWorkspaceRecordSchema.parse({
-    ...input,
+    ...rest,
+    background: background ?? false,
     title: input.title ?? null,
     branch: input.branch ?? null,
     worktreeRoot: input.worktreeRoot ?? null,

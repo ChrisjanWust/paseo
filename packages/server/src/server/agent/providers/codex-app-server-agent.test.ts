@@ -9,7 +9,9 @@ import { PassThrough } from "node:stream";
 import { fileURLToPath } from "node:url";
 
 import type {
+  AgentClient,
   AgentLaunchContext,
+  AgentPermissionRequest,
   AgentSession,
   AgentSessionConfig,
   AgentSlashCommand,
@@ -93,6 +95,7 @@ import {
 } from "./codex/test-utils/fake-app-server.js";
 import { createTestLogger } from "../../../test-utils/test-logger.js";
 import { asInternals as castInternals, createStub } from "../../test-utils/class-mocks.js";
+import { AgentManager } from "../agent-manager.js";
 import { buildProviderRegistry } from "../provider-registry.js";
 
 interface CollaborationModeRecord {
@@ -170,44 +173,6 @@ function createSession(
   session.activeForegroundTurnId = "test-turn";
   return session;
 }
-
-test("Codex usage reference follows CODEX_HOME and excludes custom base URLs", async () => {
-  const session = new CodexAppServerAgentSession(
-    createConfig(),
-    null,
-    createTestLogger(),
-    () => {
-      throw new Error("unused");
-    },
-    {},
-    false,
-    false,
-    false,
-    undefined,
-    "interactive",
-    { CODEX_HOME: "/accounts/second" },
-  );
-  expect(await session.getUsageReference()).toEqual({
-    source: "codex",
-    input: { codexHome: "/accounts/second" },
-  });
-  const custom = new CodexAppServerAgentSession(
-    createConfig(),
-    null,
-    createTestLogger(),
-    () => {
-      throw new Error("unused");
-    },
-    {},
-    false,
-    false,
-    false,
-    undefined,
-    "interactive",
-    { CODEX_HOME: "/accounts/second", OPENAI_BASE_URL: "https://example.test" },
-  );
-  expect(await custom.getUsageReference()).toBeNull();
-});
 
 function createProviderWithFakeAppServer(
   appServer: FakeCodexAppServer,
@@ -539,7 +504,7 @@ function asInternals(session: CodexTestSession): CodexSessionTestAccess {
 }
 
 function markdownImageSource(markdown: string): string {
-  const match = markdown.match(/^!\[[^\]]*]\((.*)\)$/);
+  const match = markdown.trim().match(/^!\[[^\]]*]\((.*)\)$/);
   if (!match) {
     throw new Error(`Expected markdown image, got: ${markdown}`);
   }
@@ -735,6 +700,11 @@ process.stdin.on("data", (chunk) => {
   });
 
   try {
+    expect(session.usageSession?.()).toMatchObject({
+      provider: "codex",
+      env: { CODEX_HOME: providerCodexHome },
+    });
+    expect(session.usageSession?.()?.sessionKey).toBe(session.usageSession?.()?.sessionKey);
     return await run({
       session,
       readCaptured: () =>
@@ -745,6 +715,7 @@ process.stdin.on("data", (chunk) => {
     });
   } finally {
     await session.close();
+    expect(session.usageSession?.()).toBeNull();
     vi.unstubAllEnvs();
     rmSync(tempDir, { recursive: true, force: true });
   }
@@ -804,6 +775,7 @@ let buffer = "";
 function resultFor(method, params) {
   if (method === "initialize") return {};
   if (method === "collaborationMode/list") return { data: [] };
+  if (method === "model/list") return { data: [] };
   if (method === "skills/list") {
     const cwds = params && params.cwds;
     const projectCwd = ${JSON.stringify(projectCwd)};
@@ -1200,6 +1172,23 @@ describe("Codex app-server provider", () => {
     }
   });
 
+  test("provider persistence leaves options owned by the stored agent config", async () => {
+    const appServer = createFakeCodexAppServer();
+    const provider = createProviderWithFakeAppServer(appServer);
+    const session = await provider.createSession(
+      createConfig({ providerOptions: { sandbox_mode: "read-only", approval_policy: "never" } }),
+    );
+    try {
+      await session.startTurn("persist the configured session");
+      await appServer.waitForTurnStart();
+      const handle = session.describePersistence()!;
+      expect(handle.metadata).not.toHaveProperty("providerOptions");
+      appServer.assertNoErrors();
+    } finally {
+      await session.close();
+    }
+  });
+
   test("preapproves only granted tools on the injected Codex MCP server", async () => {
     const session = createSession({
       modeId: undefined,
@@ -1383,6 +1372,75 @@ describe("Codex app-server provider", () => {
     await session.close();
   });
 
+  test("answers each concurrent command approval callback that shares one item", async () => {
+    const appServer = createFakeCodexAppServer({
+      initialize: () => ({}),
+      "collaborationMode/list": () => ({ data: [] }),
+      "skills/list": () => ({ data: [] }),
+    });
+    const session = new CodexAppServerAgentSession(
+      createConfig({ cwd: "/workspace/project" }),
+      null,
+      createTestLogger(),
+      async () => appServer.child,
+    );
+    const requested: AgentPermissionRequest[] = [];
+    session.subscribe((event) => {
+      if (event.type === "permission_requested") requested.push(event.request);
+    });
+
+    try {
+      await session.connect();
+
+      const firstPermission = waitForNextPermission(session);
+      appServer.requestCommandApproval({
+        itemId: "shared-item",
+        approvalId: "callback-a",
+        threadId: "thread-1",
+        turnId: "turn-1",
+        command: "git add a.txt",
+        cwd: "/workspace/project",
+        reason: "subcommand a",
+      });
+      await firstPermission;
+      const secondPermission = waitForNextPermission(session);
+      appServer.requestCommandApproval({
+        itemId: "shared-item",
+        approvalId: "callback-b",
+        threadId: "thread-1",
+        turnId: "turn-1",
+        command: "git add b.txt",
+        cwd: "/workspace/project",
+        reason: "subcommand b",
+      });
+      await secondPermission;
+
+      expect(requested.map((request) => request.input?.command)).toEqual([
+        "git add a.txt",
+        "git add b.txt",
+      ]);
+      expect(new Set(requested.map((request) => request.id)).size).toBe(2);
+      expect(session.getPendingPermissions()).toHaveLength(2);
+
+      await session.respondToPermission(requested[0]!.id, { behavior: "allow" });
+      await session.respondToPermission(requested[1]!.id, {
+        behavior: "deny",
+        message: "not b",
+      });
+
+      await expect(appServer.waitForCommandApprovalDecision("callback-a")).resolves.toEqual({
+        decision: "accept",
+      });
+      await expect(appServer.waitForCommandApprovalDecision("callback-b")).resolves.toEqual({
+        decision: "decline",
+      });
+      expect(session.getPendingPermissions()).toHaveLength(0);
+      appServer.assertNoErrors();
+    } finally {
+      await session.close();
+    }
+  });
+
   test("shows a successful shell command that produces no output", async () => {
     const appServer = createFakeCodexAppServer();
     const session = new CodexAppServerAgentSession(
@@ -1545,6 +1603,51 @@ describe("Codex app-server provider", () => {
     }
   });
 
+  test.each(["python3 -i", "/usr/bin/zsh -lc 'python3 -i'"])(
+    "labels a terminal write started as %s with the command that started the terminal",
+    async (command) => {
+      const appServer = createFakeCodexAppServer();
+      const session = new CodexAppServerAgentSession(
+        createConfig({ cwd: "/workspace/project" }),
+        null,
+        createTestLogger(),
+        async () => appServer.child,
+      );
+
+      try {
+        await session.connect();
+        appServer.startsTerminalCommand({
+          threadId: "thread-1",
+          turnId: "turn-1",
+          itemId: "interactive-shell",
+          processId: "73",
+          command,
+        });
+
+        const terminalWrite = waitForTimelineToolCall(session, "terminal-session-73-1");
+        appServer.typesIntoTerminal({
+          threadId: "thread-1",
+          turnId: "turn-1",
+          itemId: "interactive-shell",
+          processId: "73",
+          text: "print(1)\n",
+        });
+
+        await expect(terminalWrite).resolves.toMatchObject({
+          item: {
+            callId: "terminal-session-73-1",
+            name: "terminal",
+            detail: { type: "plain_text", label: "python3 -i", text: "print(1)\n" },
+            metadata: { processId: "73" },
+          },
+        });
+        appServer.assertNoErrors();
+      } finally {
+        await session.close();
+      }
+    },
+  );
+
   test("keeps repeated writes to one terminal as separate timeline rows", async () => {
     const appServer = createFakeCodexAppServer();
     const session = new CodexAppServerAgentSession(
@@ -1695,6 +1798,28 @@ describe("Codex app-server provider", () => {
     });
     appServer.assertNoErrors();
     await session.close();
+  });
+
+  test("resumed session exposes usage before connecting and not after close", async () => {
+    let spawns = 0;
+    const session = new CodexAppServerAgentSession(
+      createConfig({ cwd: "/workspace/project" }),
+      { sessionId: "saved-thread" },
+      createTestLogger(),
+      async () => {
+        spawns++;
+        throw new Error("unexpected spawn");
+      },
+      { environment: { HOME: "/fixture/codex", CODEX_HOME: "/fixture/profile" } },
+    );
+    expect(session.usageSession()).toMatchObject({
+      provider: "codex",
+      env: { CODEX_HOME: "/fixture/profile" },
+      sessionKey: expect.any(String),
+    });
+    expect(spawns).toBe(0);
+    await session.close();
+    expect(session.usageSession()).toBeNull();
   });
 
   test("loads archived Codex history without resuming the native thread", async () => {
@@ -1957,6 +2082,66 @@ describe("Codex app-server provider", () => {
     await session.revertConversation({ messageId: "codex-first" });
 
     expect(appServer.recordedRollbacks).toEqual([{ threadId: "forked-thread", numTurns: 2 }]);
+    await expect(session.getRuntimeInfo()).resolves.toMatchObject({
+      sessionId: "forked-thread",
+    });
+    appServer.assertNoErrors();
+    await session.close();
+  });
+
+  test("rewinds a legacy conversation with a bounded fork on Codex without thread/rollback", async () => {
+    const appServer = createFakeCodexAppServer({
+      initialize: () => ({ userAgent: "paseo/0.159.0 (Ubuntu 26.4.0; x86_64) (paseo; 0)" }),
+      "thread/read": () => ({
+        thread: { id: "thread-1", historyMode: "legacy", turns: [] },
+      }),
+      "thread/rollback": () => ({
+        __jsonRpcError: {
+          code: -32600,
+          message: "Invalid request: unknown variant `thread/rollback`",
+        },
+      }),
+    });
+    const session = new CodexAppServerAgentSession(
+      createConfig({ cwd: "/workspace/project" }),
+      null,
+      createTestLogger(),
+      async () => appServer.child,
+    );
+
+    await session.startTurn("remember first");
+    emitCodexUserMessage(appServer, {
+      id: "codex-first",
+      text: "remember first",
+      turnId: "turn-first",
+    });
+    appServer.completeTurn();
+    await session.startTurn("remember second");
+    emitCodexUserMessage(appServer, {
+      id: "codex-second",
+      text: "remember second",
+      turnId: "turn-second",
+    });
+    appServer.completeTurn();
+
+    await session.revertConversation({ messageId: "codex-second" });
+
+    const forkRequests = appServer
+      .requests()
+      .filter((request) => request.method === "thread/fork")
+      .map((request) => request.params);
+    expect(forkRequests).toEqual([
+      {
+        threadId: "thread-1",
+        beforeTurnId: "turn-second",
+        cwd: "/workspace/project",
+        model: "gpt-5.4",
+        serviceTier: null,
+        excludeTurns: false,
+        persistExtendedHistory: true,
+      },
+    ]);
+    expect(appServer.recordedRollbacks).toEqual([]);
     await expect(session.getRuntimeInfo()).resolves.toMatchObject({
       sessionId: "forked-thread",
     });
@@ -2229,7 +2414,12 @@ describe("Codex app-server provider", () => {
       throw new Error(`resumeSession timed out; thread requests: ${threadRequests.join(", ")}`);
     }
 
-    expect(threadRequests).toEqual(["config/read", "thread/loaded/list", "thread/resume"]);
+    expect(threadRequests).toEqual([
+      "model/list",
+      "config/read",
+      "thread/loaded/list",
+      "thread/resume",
+    ]);
     expect(outcome).toBe("rejected");
     appServer.assertNoErrors();
   });
@@ -5812,7 +6002,7 @@ describe("Codex app-server provider", () => {
         turnId: "test-turn",
         item: {
           type: "assistant_message",
-          text: "![Image](file:///tmp/paseo%20image.png)",
+          text: "\n\n![Image](file:///tmp/paseo%20image.png)\n\n",
         },
       },
     ]);
@@ -5844,7 +6034,7 @@ describe("Codex app-server provider", () => {
           turnId: "test-turn",
           item: {
             type: "assistant_message",
-            text: `![Image](${expectedPath})`,
+            text: `\n\n![Image](${expectedPath})\n\n`,
           },
         },
       ]);
@@ -6028,6 +6218,107 @@ describe("Codex app-server provider", () => {
         provider: "codex",
         turnId: "test-turn",
         usage: undefined,
+      },
+    ]);
+  });
+
+  test.each([
+    [
+      "a usage limit",
+      { type: "usageLimitExceeded", limitId: "image_gen", resetsAt: 1786150800 },
+      { type: "usageLimitExceeded", limitId: "image_gen", resetsAt: 1786150800 },
+    ],
+    ["no failure details", null, { message: "Image generation failed" }],
+  ])(
+    "emits failed imageGeneration items with %s as failed tool calls",
+    (_label, failure, expectedError) => {
+      const session = createSession();
+      const events: AgentStreamEvent[] = [];
+      session.subscribe((event) => events.push(event));
+
+      asInternals(session).handleNotification("item/completed", {
+        item: {
+          id: "image-generation-failed",
+          type: "imageGeneration",
+          status: "failed",
+          revisedPrompt: "paint a blue whale",
+          result: "",
+          transparentBackground: null,
+          failure,
+          savedPath: null,
+        },
+      });
+
+      expect(events).toEqual([
+        {
+          type: "timeline",
+          provider: "codex",
+          turnId: "test-turn",
+          item: {
+            type: "tool_call",
+            callId: "image-generation-failed",
+            name: "image_generation",
+            status: "failed",
+            error: expectedError,
+            detail: {
+              type: "unknown",
+              input: { prompt: "paint a blue whale" },
+              output: null,
+            },
+          },
+        },
+      ]);
+    },
+  );
+
+  test("keeps failed imageGeneration items in persisted history", async () => {
+    const session = createSession();
+    session.client = {
+      request: vi.fn(async () => ({
+        thread: {
+          turns: [
+            {
+              items: [
+                {
+                  type: "imageGeneration",
+                  id: "image-generation-failed",
+                  status: "failed",
+                  revisedPrompt: "paint a blue whale",
+                  result: "",
+                  transparentBackground: null,
+                  failure: { type: "usageLimitExceeded", limitId: "image_gen", resetsAt: null },
+                  savedPath: null,
+                },
+              ],
+            },
+          ],
+        },
+      })),
+    };
+
+    await asInternals(session).loadPersistedHistory(session.client);
+
+    const history: AgentStreamEvent[] = [];
+    for await (const event of session.streamHistory()) {
+      history.push(event);
+    }
+
+    expect(history).toEqual([
+      {
+        type: "timeline",
+        provider: "codex",
+        item: {
+          type: "tool_call",
+          callId: "image-generation-failed",
+          name: "image_generation",
+          status: "failed",
+          error: { type: "usageLimitExceeded", limitId: "image_gen", resetsAt: null },
+          detail: {
+            type: "unknown",
+            input: { prompt: "paint a blue whale" },
+            output: null,
+          },
+        },
       },
     ]);
   });
@@ -6783,4 +7074,96 @@ describe("Codex denied plan approvals", () => {
       metadata: { approved: false },
     });
   });
+});
+
+describe("Codex interactive resume startup", () => {
+  test("delivers an autonomous turn that starts during resume to the first subscriber", async () => {
+    const appServer = createFakeCodexAppServer({
+      "turn/interrupt": () => ({}),
+      "thread/resume": () => {
+        appServer.startsTurn({ threadId: "saved-thread", turnId: "autonomous-turn" });
+        appServer.says({ threadId: "saved-thread", text: "Working on the goal" });
+        return { thread: { id: "saved-thread" } };
+      },
+      "thread/read": () => ({ thread: { turns: [] } }),
+    });
+    const session = new CodexAppServerAgentSession(
+      createConfig({ modeId: "full-access" }),
+      { sessionId: "saved-thread" },
+      createTestLogger(),
+      async () => appServer.child,
+    );
+    try {
+      await session.connect();
+      const events: AgentStreamEvent[] = [];
+      const unsubscribe = session.subscribe((event) => events.push(event));
+      expect(events.some((event) => event.type === "turn_started")).toBe(true);
+      expect(
+        events.some(
+          (event) =>
+            event.type === "timeline" &&
+            event.item.type === "assistant_message" &&
+            event.item.text.includes("Working on the goal"),
+        ),
+      ).toBe(true);
+      await session.interrupt();
+      expect(
+        appServer.requests().find((request) => request.method === "turn/interrupt"),
+      ).toMatchObject({ params: { threadId: "saved-thread", turnId: "autonomous-turn" } });
+      unsubscribe();
+      const laterEvents: AgentStreamEvent[] = [];
+      session.subscribe((event) => laterEvents.push(event));
+      expect(laterEvents).toEqual([]);
+    } finally {
+      await session.close();
+      appServer.assertNoErrors();
+    }
+  });
+  test.each([false, true])(
+    "applies resumed goal events before returning (completed during resume: %s)",
+    async (completedDuringResume) => {
+      const appServer = createFakeCodexAppServer({
+        "thread/resume": () => {
+          appServer.startsTurn({ threadId: "saved-thread", turnId: "autonomous-turn" });
+          if (completedDuringResume) appServer.completeTurn({ threadId: "saved-thread" });
+          return { thread: { id: "saved-thread" } };
+        },
+        "thread/read": () => ({ thread: { turns: [] } }),
+      });
+      const session = new CodexAppServerAgentSession(
+        createConfig({ title: "Resumed goal", cwd: process.cwd() }),
+        { sessionId: "saved-thread" },
+        createTestLogger(),
+        async () => appServer.child,
+      );
+      const client: AgentClient = {
+        provider: "codex",
+        capabilities: session.capabilities,
+        isAvailable: async () => true,
+        fetchCatalog: async () => ({ models: [], modes: [] }),
+        createSession: async () => {
+          throw new Error("Unexpected create");
+        },
+        resumeSession: async () => {
+          await session.connect();
+          return session;
+        },
+      };
+      const manager = new AgentManager({ clients: { codex: client }, logger: createTestLogger() });
+      let id: string | undefined;
+      try {
+        const resumed = await manager.resumeAgentFromPersistence(
+          { provider: "codex", sessionId: "saved-thread" },
+          createConfig({ title: "Resumed goal", cwd: process.cwd() }),
+        );
+        id = resumed.id;
+        expect(resumed.lifecycle).toBe(completedDuringResume ? "idle" : "running");
+        expect(manager.getAgent(id)?.lifecycle).toBe(completedDuringResume ? "idle" : "running");
+      } finally {
+        if (id) await manager.closeAgent(id);
+        await session.close();
+        appServer.assertNoErrors();
+      }
+    },
+  );
 });

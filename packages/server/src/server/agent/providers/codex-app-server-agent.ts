@@ -1,3 +1,4 @@
+import { validateProviderOptions } from "../provider-options.js";
 import {
   getAgentStreamEventTurnId,
   type AgentPermissionAction,
@@ -56,12 +57,12 @@ import { CodexAsyncQuestions, codexAsyncQuestionToTimeline } from "./codex/async
 import {
   mapCodexToolCallEnvelope,
   mapCodexToolCallFromThreadItem,
+  normalizeCommandExecutionCommand,
   splitCodexMcpToolResultImages,
 } from "./codex/tool-call-mapper.js";
 import {
   checkProviderLaunchAvailable,
   createProviderEnv,
-  createProviderEnvSpec,
   resolveProviderLaunch,
   type ProviderRuntimeSettings,
   type ResolvedProviderLaunch,
@@ -73,7 +74,12 @@ import {
 import { createPathEquivalenceMatcher } from "../../../utils/path.js";
 import { spawnProcess } from "../../../utils/spawn.js";
 import { extractCodexTerminalSessionId, nonEmptyString } from "./tool-call-mapper-utils.js";
-import { buildCodexFeatures, codexModelSupportsFastMode } from "./codex-feature-definitions.js";
+import {
+  buildCodexFeatures,
+  CodexServiceTierSchema,
+  readCodexServiceTier,
+  type CodexServiceTier,
+} from "./codex-feature-definitions.js";
 import {
   CodexAppServerClient,
   CodexAppServerRpcError,
@@ -169,6 +175,9 @@ const CODEX_PLAN_IMPLEMENTATION_PROMPT_PREFIX =
 // (and the /goal slash command) when the binary is too old.
 const CODEX_GOALS_MIN_VERSION: readonly [number, number, number] = [0, 128, 0];
 const CODEX_AUTO_REVIEW_MIN_VERSION: readonly [number, number, number] = [0, 115, 0];
+// Codex removed `thread/rollback` in 0.156.0, so rewinding a legacy thread there
+// has to fork before the target turn instead.
+const CODEX_THREAD_ROLLBACK_REMOVED_VERSION: readonly [number, number, number] = [0, 156, 0];
 
 function parseCodexVersion(versionOutput: string): [number, number, number] | null {
   const match = versionOutput.match(/(\d+)\.(\d+)\.(\d+)/);
@@ -187,6 +196,15 @@ function codexVersionAtLeast(
     if (parsed[i] < min[i]) return false;
   }
   return true;
+}
+
+// The initialize userAgent starts with `<client>/<codex version>`. An agent we
+// cannot parse is treated as an older server that still has rollback.
+function codexServerHasThreadRollback(userAgent: unknown): boolean {
+  return (
+    typeof userAgent !== "string" ||
+    !codexVersionAtLeast(userAgent, CODEX_THREAD_ROLLBACK_REMOVED_VERSION)
+  );
 }
 
 type GoalSubcommand =
@@ -253,6 +271,7 @@ interface CodexAppServerClientLike {
 }
 
 interface CodexAppServerAgentDeps {
+  environment?: Record<string, string>;
   workspaceGitService?: Pick<WorkspaceGitService, "resolveRepoRoot">;
   customProvider?: {
     id: string;
@@ -929,6 +948,7 @@ interface CodexModel {
   model?: string;
   defaultReasoningEffort?: string;
   supportedReasoningEfforts?: CodexReasoningEffortEntry[];
+  serviceTiers?: CodexServiceTier[];
 }
 
 const CodexModelListResponseSchema = z.object({
@@ -936,6 +956,7 @@ const CodexModelListResponseSchema = z.object({
     .array(
       z.object({
         id: z.string(),
+        serviceTiers: z.array(CodexServiceTierSchema).optional(),
         displayName: z.string().optional(),
         description: z.string().optional(),
         isDefault: z.boolean().optional(),
@@ -1925,6 +1946,15 @@ function mapCodexThreadImageItem(
   if (normalizedType === "imageView") {
     return renderProviderImageOutputAsAssistantMarkdown({
       path: firstStringField(normalizedItem, ["path"]),
+    });
+  }
+
+  if (normalizedItem.status === "failed") {
+    return mapCodexToolCallEnvelope({
+      callId: firstStringField(normalizedItem, ["id"]),
+      name: "image_generation",
+      input: { prompt: firstStringField(normalizedItem, ["revisedPrompt", "revised_prompt"]) },
+      error: normalizedItem.failure ?? { message: "Image generation failed" },
     });
   }
 
@@ -3293,7 +3323,7 @@ function toCodexTextInput(text: string): Extract<CodexAppServerUserInput, { type
 export function buildCodexAppServerEnv(
   runtimeSettings?: ProviderRuntimeSettings,
   launchEnv?: Record<string, string>,
-): NodeJS.ProcessEnv {
+) {
   return createProviderEnv({
     runtimeSettings,
     overlays: [launchEnv],
@@ -3421,12 +3451,15 @@ export class CodexAppServerAgentSession implements AgentSession {
     cancelRequested: boolean;
   } | null = null;
   private client: CodexAppServerClient | null = null;
+  private threadRollbackAvailable = true;
   private readonly subscribers = new Set<(event: AgentStreamEvent) => void>();
+  private startupEvents: AgentStreamEvent[] | null = null;
   private nextTurnOrdinal = 0;
   private activeForegroundTurnId: string | null = null;
   private activeClientMessageId: string | null = null;
   private cachedRuntimeInfo: AgentRuntimeInfo | null = null;
-  private serviceTier: "fast" | null = null;
+  private serviceTier: string | null = null;
+  private speedModels: CodexModel[] = [];
   private planModeEnabled = false;
   private historyPending = false;
   private persistedHistory: PersistedTimelineEntry[] = [];
@@ -3489,6 +3522,19 @@ export class CodexAppServerAgentSession implements AgentSession {
   } | null = null;
   private cachedSkills: Array<{ name: string; description: string; path: string }> | null = null;
 
+  private readonly usageSessionKey = randomUUID();
+  private readonly harnessEnvironment: Record<string, string>;
+
+  usageSession() {
+    if (this.closed) return null;
+    return {
+      provider: "codex",
+      model: this.config.model,
+      env: this.harnessEnvironment,
+      sessionKey: this.usageSessionKey,
+    };
+  }
+
   constructor(
     config: AgentSessionConfig,
     private readonly resumeHandle: { sessionId: string; metadata?: Record<string, unknown> } | null,
@@ -3500,7 +3546,6 @@ export class CodexAppServerAgentSession implements AgentSession {
     private readonly autoReviewEnabled: boolean = false,
     private readonly agentId?: string,
     private readonly initialResumePurpose: "interactive" | "history" = "interactive",
-    private readonly usageEnv: NodeJS.ProcessEnv = process.env,
   ) {
     this.logger = logger.child({
       module: "agent",
@@ -3512,14 +3557,14 @@ export class CodexAppServerAgentSession implements AgentSession {
     }
     this.hasWorkflowModeOverride = config.modeId !== undefined;
     this.currentMode = config.modeId ?? DEFAULT_CODEX_MODE_ID;
-    this.providerOptions = CodexProviderOptionsSchema.parse(config.providerOptions ?? {});
+    this.providerOptions =
+      validateProviderOptions("codex", CodexProviderOptionsSchema, config.providerOptions) ?? {};
     this.config = config;
+    this.harnessEnvironment = deps.environment ?? buildCodexAppServerEnv();
     this.asyncQuestions = new CodexAsyncQuestions(resumeHandle?.metadata?.asyncQuestions);
     this.codexHome = deps.codexHome ?? resolveCodexHomeDir(process.env);
     this.config.thinkingOptionId = normalizeCodexThinkingOptionId(this.config.thinkingOptionId);
-    if (this.config.featureValues?.fast_mode && codexModelSupportsFastMode(this.config.model)) {
-      this.serviceTier = "fast";
-    }
+    this.serviceTier = readCodexServiceTier(this.config.featureValues);
     if (this.config.featureValues?.plan_mode) {
       this.planModeEnabled = true;
     }
@@ -3527,18 +3572,9 @@ export class CodexAppServerAgentSession implements AgentSession {
     if (this.resumeHandle?.sessionId) {
       this.currentThreadId = this.resumeHandle.sessionId;
       this.historyPending = true;
+      // Resuming can start a goal before the caller receives the session.
+      if (this.initialResumePurpose === "interactive") this.startupEvents = [];
     }
-  }
-
-  async getUsageReference() {
-    if (this.usageEnv.OPENAI_BASE_URL) return null;
-    return {
-      source: "codex",
-      input: {
-        codexHome:
-          this.usageEnv.CODEX_HOME || path.join(this.usageEnv.HOME || os.homedir(), ".codex"),
-      },
-    };
   }
 
   get id(): string | null {
@@ -3547,8 +3583,8 @@ export class CodexAppServerAgentSession implements AgentSession {
 
   get features(): AgentFeature[] {
     return buildCodexFeatures({
-      modelId: this.config.model,
-      fastModeEnabled: this.serviceTier === "fast",
+      serviceTiers: this.currentServiceTiers(),
+      serviceTier: this.serviceTier ?? "default",
       planModeEnabled: this.planModeEnabled,
       planModeAvailable: this.hasPlanCollaborationMode(),
     });
@@ -3601,9 +3637,15 @@ export class CodexAppServerAgentSession implements AgentSession {
     this.registerRequestHandlers();
 
     try {
-      await client.request("initialize", buildCodexAppServerInitializeParams());
+      const initialized = toObjectRecord(
+        await client.request("initialize", buildCodexAppServerInitializeParams()),
+      );
+      this.threadRollbackAvailable = codexServerHasThreadRollback(initialized?.userAgent);
       client.notify("initialized", {});
 
+      this.speedModels =
+        CodexModelListResponseSchema.parse(await client.request("model/list", {})).data ?? [];
+      this.reconcileServiceTier();
       await this.loadResolvedWorkspaceWrite();
       await this.loadCollaborationModes();
       await this.loadSkills();
@@ -3808,18 +3850,30 @@ export class CodexAppServerAgentSession implements AgentSession {
     this.resolvedCollaborationMode = this.resolveCollaborationMode();
   }
 
-  private applyFeatureValue(featureId: "fast_mode" | "plan_mode", value: boolean): void {
-    this.config.featureValues = {
-      ...this.config.featureValues,
-      [featureId]: value,
-    };
+  private currentServiceTiers(): CodexServiceTier[] {
+    const selectedModel = this.config.model
+      ? this.speedModels.find(
+          (model) => model.id === this.config.model || model.model === this.config.model,
+        )
+      : (this.speedModels.find((model) => model.isDefault) ?? this.speedModels[0]);
+    return selectedModel?.serviceTiers ?? [];
+  }
 
-    if (featureId === "fast_mode") {
-      this.serviceTier = value ? "fast" : null;
-      this.cachedRuntimeInfo = null;
-      return;
+  private reconcileServiceTier(): void {
+    const tiers = this.currentServiceTiers();
+    // COMPAT(codexFastPreference): added in v0.10.0, remove after 2027-03-29 once saved Fast preferences have migrated.
+    if (this.serviceTier === "fast" && !tiers.some((tier) => tier.id === "fast")) {
+      this.serviceTier = tiers.find((tier) => tier.name.toLowerCase() === "fast")?.id ?? null;
     }
+    if (this.serviceTier !== "default" && !tiers.some((tier) => tier.id === this.serviceTier)) {
+      this.serviceTier = null;
+    }
+    const { fast_mode: _legacyFast, ...values } = this.config.featureValues ?? {};
+    this.config.featureValues = { ...values, service_tier: this.serviceTier ?? "default" };
+  }
 
+  private applyFeatureValue(featureId: "plan_mode", value: boolean): void {
+    this.config.featureValues = { ...this.config.featureValues, [featureId]: value };
     this.planModeEnabled = value;
     this.refreshResolvedCollaborationMode();
     this.cachedRuntimeInfo = null;
@@ -4150,9 +4204,7 @@ export class CodexAppServerAgentSession implements AgentSession {
     if (thinkingOptionId) {
       params.effort = thinkingOptionId;
     }
-    if (this.serviceTier) {
-      params.serviceTier = this.serviceTier;
-    }
+    params.serviceTier = this.serviceTier ?? "default";
     if (this.resolvedCollaborationMode) {
       params.collaborationMode = {
         mode: this.resolvedCollaborationMode.mode,
@@ -4495,6 +4547,9 @@ export class CodexAppServerAgentSession implements AgentSession {
 
   subscribe(callback: (event: AgentStreamEvent) => void): () => void {
     this.subscribers.add(callback);
+    const startupEvents = this.startupEvents;
+    this.startupEvents = null;
+    for (const event of startupEvents ?? []) this.notifySubscribers(event);
     return () => {
       this.subscribers.delete(callback);
     };
@@ -4571,9 +4626,7 @@ export class CodexAppServerAgentSession implements AgentSession {
 
   async setModel(modelId: string | null): Promise<void> {
     this.config.model = modelId ?? undefined;
-    if (!codexModelSupportsFastMode(this.config.model)) {
-      this.serviceTier = null;
-    }
+    this.reconcileServiceTier();
     this.refreshResolvedCollaborationMode();
     this.cachedRuntimeInfo = null;
   }
@@ -4588,13 +4641,27 @@ export class CodexAppServerAgentSession implements AgentSession {
   }
 
   async setFeature(featureId: string, value: unknown): Promise<void> {
+    // COMPAT(codexFastPreference): added in v0.10.0, remove after 2027-03-29 once clients use service_tier.
     if (featureId === "fast_mode") {
-      if (Boolean(value) && !codexModelSupportsFastMode(this.config.model)) {
+      const fast = this.currentServiceTiers().find((tier) => tier.name.toLowerCase() === "fast");
+      if (value && !fast)
         throw new Error(
           `Codex fast mode is not available for model '${this.config.model ?? "default"}'`,
         );
+      return this.setFeature("service_tier", value ? fast!.id : "default");
+    }
+    if (featureId === "service_tier") {
+      if (
+        typeof value !== "string" ||
+        (value !== "default" && !this.currentServiceTiers().some((tier) => tier.id === value))
+      ) {
+        throw new Error(
+          `Codex speed '${String(value)}' is not available for model '${this.config.model ?? "default"}'`,
+        );
       }
-      this.applyFeatureValue("fast_mode", Boolean(value));
+      this.serviceTier = value;
+      this.reconcileServiceTier();
+      this.cachedRuntimeInfo = null;
       return;
     }
     if (featureId === "plan_mode") {
@@ -4871,7 +4938,6 @@ export class CodexAppServerAgentSession implements AgentSession {
         modeId: this.config.modeId,
         model: this.config.model ?? null,
         thinkingOptionId,
-        providerOptions: this.config.providerOptions,
         toolPolicy: this.config.toolPolicy,
         systemPrompt: this.config.systemPrompt,
         mcpServers: this.config.mcpServers,
@@ -4900,6 +4966,7 @@ export class CodexAppServerAgentSession implements AgentSession {
       serviceTier: this.serviceTier,
       config: this.buildCodexInnerConfig(),
       userMessageTurns: this.codexUserMessageTurns(),
+      threadRollbackAvailable: this.threadRollbackAvailable,
       setThreadId: async (threadId) => {
         this.currentThreadId = threadId;
         this.cachedRuntimeInfo = null;
@@ -4971,6 +5038,7 @@ export class CodexAppServerAgentSession implements AgentSession {
     this.clearPendingPermissions();
     this.pendingSubAgentNotificationsByThreadId.clear();
     this.subscribers.clear();
+    this.startupEvents = null;
     this.activeForegroundTurnId = null;
     this.activeClientMessageId = null;
     this.pendingForegroundTurnIdentification?.resolve(null);
@@ -5218,6 +5286,7 @@ export class CodexAppServerAgentSession implements AgentSession {
   private async applyDefaultModelAndThinking(): Promise<string> {
     const { model, thinkingOptionId } = await this.resolveModelAndThinking();
     this.config.model = model;
+    this.reconcileServiceTier();
     this.config.thinkingOptionId = thinkingOptionId;
     return model;
   }
@@ -5317,6 +5386,10 @@ export class CodexAppServerAgentSession implements AgentSession {
   private notifySubscribers(event: AgentStreamEvent): void {
     const turnId = getAgentStreamEventTurnId(event) ?? this.activeForegroundTurnId;
     const tagged = turnId ? { ...event, turnId } : event;
+    if (this.startupEvents) {
+      this.startupEvents.push(tagged);
+      return;
+    }
     this.logger.trace(
       {
         agentId: this.agentId,
@@ -6701,6 +6774,7 @@ export class CodexAppServerAgentSession implements AgentSession {
     );
     const itemId = parsed.item.id;
     if (normalizedItemType === "commandExecution") {
+      this.rememberTerminalProcessForItem(parsed.item);
       const callId = timelineItem.callId || itemId;
       if (callId && this.emittedExecCommandStartedCallIds.has(callId)) {
         return;
@@ -6820,19 +6894,21 @@ export class CodexAppServerAgentSession implements AgentSession {
   }
 
   private rememberTerminalProcessForCommand(command: unknown, output: string | null): void {
-    const normalizedCommand = normalizeCodexCommandValue(command);
-    if (!normalizedCommand) {
-      return;
-    }
-    const displayCommand =
-      typeof normalizedCommand === "string"
-        ? normalizedCommand
-        : normalizedCommand.join(" ").trim();
-    if (!displayCommand) {
-      return;
-    }
     const processId = extractCodexTerminalSessionId(output ?? undefined);
-    if (!processId) {
+    if (processId) {
+      this.rememberTerminalProcess(processId, command);
+    }
+  }
+
+  private rememberTerminalProcessForItem(item: { [key: string]: unknown }): void {
+    if (typeof item.processId === "string" && item.processId) {
+      this.rememberTerminalProcess(item.processId, item.command);
+    }
+  }
+
+  private rememberTerminalProcess(processId: string, command: unknown): void {
+    const displayCommand = normalizeCommandExecutionCommand(command);
+    if (!displayCommand) {
       return;
     }
     this.terminalCommandByProcessId.set(processId, displayCommand);
@@ -6904,6 +6980,8 @@ export class CodexAppServerAgentSession implements AgentSession {
     const parsed = z
       .object({
         itemId: z.string(),
+        // Set when several approval callbacks belong to one item; it names the callback.
+        approvalId: z.string().nullable().optional(),
         threadId: z.string(),
         turnId: z.string(),
         command: z.string().nullable().optional(),
@@ -6917,7 +6995,7 @@ export class CodexAppServerAgentSession implements AgentSession {
       cwd: parsed.cwd ?? this.config.cwd ?? null,
       running: true,
     });
-    const requestId = `permission-${parsed.itemId}`;
+    const requestId = `permission-${parsed.approvalId ?? parsed.itemId}`;
     const title = parsed.command ? `Run command: ${parsed.command}` : "Run command";
     const request: AgentPermissionRequest = {
       id: requestId,
@@ -7166,7 +7244,7 @@ export class CodexAppServerAgentClient implements AgentClient {
 
   private async spawnAppServer(
     launchEnv?: Record<string, string>,
-    options?: { goalsEnabled?: boolean; agentId?: string },
+    options?: { goalsEnabled?: boolean; agentId?: string; environment?: Record<string, string> },
   ): Promise<ChildProcessWithoutNullStreams> {
     const launchPrefix = await resolveCodexLaunchPrefix(this.runtimeSettings);
     const args = [...launchPrefix.args, "app-server"];
@@ -7185,10 +7263,7 @@ export class CodexAppServerAgentClient implements AgentClient {
     const child = spawnProcess(launchPrefix.command, args, {
       detached: process.platform !== "win32",
       stdio: ["pipe", "pipe", "pipe"],
-      ...createProviderEnvSpec({
-        runtimeSettings: this.runtimeSettings,
-        overlays: [launchEnv],
-      }),
+      baseEnv: options?.environment ?? buildCodexAppServerEnv(this.runtimeSettings, launchEnv),
     });
     assertChildWithPipes(child);
     return child;
@@ -7209,19 +7284,23 @@ export class CodexAppServerAgentClient implements AgentClient {
     const sessionConfig: AgentSessionConfig = { ...config, provider: CODEX_PROVIDER };
     const goalsEnabled = await this.resolveGoalsEnabled();
     const autoReviewEnabled = await this.resolveAutoReviewEnabled();
+    const environment = buildCodexAppServerEnv(this.runtimeSettings, launchContext?.env);
     const session = new CodexAppServerAgentSession(
       sessionConfig,
       null,
       this.logger,
       () =>
-        this.spawnAppServer(launchContext?.env, { goalsEnabled, agentId: launchContext?.agentId }),
-      this.sessionDeps(launchContext?.env),
+        this.spawnAppServer(launchContext?.env, {
+          goalsEnabled,
+          agentId: launchContext?.agentId,
+          environment,
+        }),
+      { ...this.sessionDeps(launchContext?.env), environment },
       options?.persistSession === false,
       goalsEnabled,
       autoReviewEnabled,
       launchContext?.agentId,
       "interactive",
-      buildCodexAppServerEnv(this.runtimeSettings, launchContext?.env),
     );
     await session.connect();
     return session;
@@ -7242,19 +7321,23 @@ export class CodexAppServerAgentClient implements AgentClient {
     };
     const goalsEnabled = await this.resolveGoalsEnabled();
     const autoReviewEnabled = await this.resolveAutoReviewEnabled();
+    const environment = buildCodexAppServerEnv(this.runtimeSettings, launchContext?.env);
     const session = new CodexAppServerAgentSession(
       merged,
       handle,
       this.logger,
       () =>
-        this.spawnAppServer(launchContext?.env, { goalsEnabled, agentId: launchContext?.agentId }),
-      this.sessionDeps(launchContext?.env),
+        this.spawnAppServer(launchContext?.env, {
+          goalsEnabled,
+          agentId: launchContext?.agentId,
+          environment,
+        }),
+      { ...this.sessionDeps(launchContext?.env), environment },
       false,
       goalsEnabled,
       autoReviewEnabled,
       launchContext?.agentId,
       options?.purpose ?? "interactive",
-      buildCodexAppServerEnv(this.runtimeSettings, launchContext?.env),
     );
     await session.connect();
     return session;

@@ -13,6 +13,7 @@ export interface WorkspaceSummary {
   archivingAt?: string;
   /** Pull/merge request backing this workspace, so a query can find it and a row can badge it. */
   changeRequest: PrBadgeModel | null;
+  statusEnteredAt: Date | null;
 }
 
 export interface ProjectHostEntry {
@@ -147,6 +148,7 @@ function toWorkspaceSummary(workspace: WorkspaceDescriptor): WorkspaceSummary {
     currentBranch: currentBranch && currentBranch !== "HEAD" ? currentBranch : null,
     ...(workspace.archivingAt ? { archivingAt: workspace.archivingAt } : {}),
     changeRequest: selectPrBadgeFromStatus(workspace.githubRuntime?.pullRequest, workspace.forge),
+    statusEnteredAt: workspace.statusEnteredAt,
   };
 }
 

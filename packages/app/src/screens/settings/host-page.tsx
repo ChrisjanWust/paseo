@@ -63,7 +63,7 @@ import { formatConnectionStatus, getConnectionStatusTone } from "@/utils/daemons
 import { formatLatency } from "@/utils/latency";
 import { ICON_SIZE } from "@/styles/theme";
 import type { Theme } from "@/styles/theme";
-import { getProviderIcon } from "@/components/provider-icons";
+import { useProviderIcon } from "@/components/provider-icons";
 import { BrowserToolsOptInCard } from "./browser-tools-card";
 import { restartDaemonFromSettings, updateDaemonFromSettings } from "./daemon-lifecycle";
 
@@ -90,7 +90,7 @@ interface DynamicProviderIconProps {
 }
 
 function DynamicProviderIcon({ iconKey, size, color = "" }: DynamicProviderIconProps) {
-  const Icon = getProviderIcon(iconKey);
+  const Icon = useProviderIcon(iconKey);
   return <Icon size={size} color={color} />;
 }
 
@@ -106,6 +106,7 @@ const removeProfileIcon = <ThemedTrash2 size={ICON_SIZE.sm} uniProps={destructiv
 const addProfileIcon = <ThemedPlus size={ICON_SIZE.sm} uniProps={mutedColorMapping} />;
 
 function formatHostConnectionLabel(connection: HostConnection, t: TFunction): string {
+  if (connection.type === "routed") return `Via ${connection.originServerId}`;
   if (connection.type === "relay") {
     return `${t("settings.host.badges.relay")} (${connection.relayEndpoint})`;
   }

@@ -20,12 +20,14 @@ import { DEFAULT_SIDEBAR_ROW_ITEMS, type SidebarRowItem, type SidebarRowItems } 
 export type SidebarTrailingChoice = Exclude<SidebarWorkspaceTrailing, "none">;
 
 export interface SidebarDisplayPreferences {
+  showBackground: boolean;
+  toggleBackground: () => void;
   grouping: SidebarGroupMode;
   setGrouping: (mode: SidebarGroupMode) => void;
   projectSort: SidebarProjectSortMode;
   setProjectSort: (mode: SidebarProjectSortMode) => void;
   workspaceSort: SidebarWorkspaceSortMode;
-  setWorkspaceSort: (mode: SidebarWorkspaceSortMode) => void;
+  setWorkspaceSort: (sort: SidebarWorkspaceSortMode) => void;
   titleSource: WorkspaceTitleSource;
   setTitleSource: (source: WorkspaceTitleSource) => void;
   projectWorkspaceDisplay: SidebarProjectWorkspaceDisplay;
@@ -60,12 +62,14 @@ export interface SidebarDisplayPreferences {
  * this for a value and set it; where it lands is this module's problem.
  */
 export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
+  const showBackground = useSidebarViewStore((state) => state.showBackground);
+  const toggleBackground = useSidebarViewStore((state) => state.toggleBackground);
+  const workspaceSort = useSidebarViewStore((state) => state.workspaceSort);
+  const setWorkspaceSort = useSidebarViewStore((state) => state.setWorkspaceSort);
   const grouping = useSidebarViewStore((state) => state.groupMode);
   const setGrouping = useSidebarViewStore((state) => state.setGroupMode);
   const projectSort = useSidebarViewStore((state) => state.projectSort);
   const setProjectSort = useSidebarViewStore((state) => state.setProjectSort);
-  const workspaceSort = useSidebarViewStore((state) => state.workspaceSort);
-  const setWorkspaceSort = useSidebarViewStore((state) => state.setWorkspaceSort);
   const hostFilters = useSidebarViewStore((state) => state.hostFilters);
   const toggleHostFilter = useSidebarViewStore((state) => state.toggleHostFilter);
   const clearHostFilters = useSidebarViewStore((state) => state.clearHostFilters);
@@ -130,12 +134,14 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
 
   return useMemo(
     () => ({
+      showBackground,
+      toggleBackground,
       grouping,
+      workspaceSort,
+      setWorkspaceSort,
       setGrouping,
       projectSort,
       setProjectSort,
-      workspaceSort,
-      setWorkspaceSort,
       titleSource: workspaceTitleSource,
       setTitleSource,
       projectWorkspaceDisplay: sidebarProjectWorkspaceDisplay,
@@ -159,12 +165,14 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
       setRecencyWindow,
     }),
     [
+      showBackground,
+      toggleBackground,
       grouping,
+      workspaceSort,
+      setWorkspaceSort,
       setGrouping,
       projectSort,
       setProjectSort,
-      workspaceSort,
-      setWorkspaceSort,
       workspaceTitleSource,
       setTitleSource,
       sidebarProjectWorkspaceDisplay,
