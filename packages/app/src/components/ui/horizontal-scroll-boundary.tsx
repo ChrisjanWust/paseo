@@ -35,7 +35,8 @@ function ScrollBoundaryShadeSvg({ side, color }: { side: "left" | "right"; color
 }
 
 const ThemedScrollBoundaryShadeSvg = withUnistyles(ScrollBoundaryShadeSvg);
-const chromeColorMapping = (theme: Theme) => ({ color: theme.colors.surfaceChrome });
+// A "surface" rail is a top bar, which paints `surfaceChrome`.
+const surfaceColorMapping = (theme: Theme) => ({ color: theme.colors.surfaceChrome });
 const sidebarColorMapping = (theme: Theme) => ({ color: theme.colors.surfaceSidebar });
 
 export function useHorizontalScrollBoundary() {
@@ -76,13 +77,13 @@ export function HorizontalScrollBoundaryShades({
   testIDPrefix = "horizontal-scroll-boundary",
 }: {
   visible: boolean;
-  backdrop: "chrome" | "sidebar";
+  backdrop: "surface" | "sidebar";
   leftStyle: AnimatedStyle<{ opacity: number }>;
   rightStyle: AnimatedStyle<{ opacity: number }>;
   testIDPrefix?: string;
 }) {
   if (!visible) return null;
-  const colorMapping = backdrop === "sidebar" ? sidebarColorMapping : chromeColorMapping;
+  const colorMapping = backdrop === "sidebar" ? sidebarColorMapping : surfaceColorMapping;
   return (
     <>
       <Animated.View

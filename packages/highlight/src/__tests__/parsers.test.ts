@@ -37,6 +37,7 @@ describe("isLanguageSupported", () => {
     expect(isLanguageSupported("test.psm1")).toBe(true);
     expect(isLanguageSupported("test.lua")).toBe(true);
     expect(isLanguageSupported("test.proto")).toBe(true);
+    expect(isLanguageSupported("App.vue")).toBe(true);
   });
 
   it("returns false for unsupported file extensions", () => {
@@ -91,6 +92,7 @@ describe("getSupportedExtensions", () => {
     expect(extensions).toContain("psm1");
     expect(extensions).toContain("lua");
     expect(extensions).toContain("proto");
+    expect(extensions).toContain("vue");
   });
 });
 

@@ -111,8 +111,6 @@ const PROJECT_SORT_ICONS: Record<SidebarProjectSortMode, OptionIcon> = {
   recent: withUnistyles(History),
 };
 
-const WORKSPACE_SORT_ICONS: Record<SidebarWorkspaceSortMode, OptionIcon> = PROJECT_SORT_ICONS;
-
 const TITLE_SOURCE_ICONS: Record<WorkspaceTitleSource, OptionIcon> = {
   title: withUnistyles(Type),
   branch: withUnistyles(GitBranch),
@@ -161,7 +159,6 @@ const RECENCY_WINDOW_ICONS: Record<SidebarRecencyWindow, OptionIcon> = {
 
 const GROUPING_MODES: readonly SidebarGroupMode[] = ["project", "status"];
 const PROJECT_SORT_MODES: readonly SidebarProjectSortMode[] = ["manual", "recent"];
-const WORKSPACE_SORT_MODES: readonly SidebarWorkspaceSortMode[] = ["manual", "recent"];
 const TITLE_SOURCES: readonly WorkspaceTitleSource[] = ["title", "branch"];
 const PROJECT_WORKSPACE_DISPLAYS: readonly SidebarProjectWorkspaceDisplay[] =
   SIDEBAR_PROJECT_WORKSPACE_DISPLAYS;
@@ -178,8 +175,10 @@ const PROJECT_SORT_LABEL_KEYS: Record<SidebarProjectSortMode, string> = {
 };
 
 const WORKSPACE_SORT_LABEL_KEYS: Record<SidebarWorkspaceSortMode, string> = {
-  manual: "sidebar.display.workspaceSort.manual",
-  recent: "sidebar.display.workspaceSort.recent",
+  manual: "sidebar.display.sort.manual",
+  created: "sidebar.display.sort.created",
+  lastPrompt: "sidebar.display.sort.lastPrompt",
+  activity: "sidebar.display.workspaceSort.recent",
 };
 
 const TITLE_SOURCE_LABEL_KEYS: Record<WorkspaceTitleSource, string> = {
@@ -234,7 +233,7 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
   const hosts = useHosts();
   // `allProjects`, never `projects`: the model's `projects` is already filtered, so a picker fed
   // from it would lose the row that undoes the filter as soon as the filter narrowed to one.
-  const { allProjects, resolvedProjectFilters } = useSidebarModel();
+  const { allProjects, resolvedProjectFilters, workspaceSortSupported } = useSidebarModel();
   const { labels } = useWorkspaceLabelProjection();
   const [managerOpen, setManagerOpen] = useState(false);
   const openManager = useCallback(() => setManagerOpen(true), []);
@@ -301,20 +300,6 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
         ),
       },
       {
-        id: "workspaceSort",
-        title: t("sidebar.display.workspaceSort.label"),
-        content: (
-          <OptionList
-            values={WORKSPACE_SORT_MODES}
-            icons={WORKSPACE_SORT_ICONS}
-            labelKeys={WORKSPACE_SORT_LABEL_KEYS}
-            selectedValue={preferences.workspaceSort}
-            onSelect={preferences.setWorkspaceSort}
-            testIDPrefix="sidebar-workspace-sort"
-          />
-        ),
-      },
-      {
         id: "titleSource",
         title: t("sidebar.display.titleSource.label"),
         content: (
@@ -363,6 +348,16 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
         />
       ),
     });
+    if (preferences.grouping === "project") {
+      definitions.push({
+        id: "sort",
+        title: t("sidebar.display.workspaceSort.label"),
+        content: (
+          <SortPage preferences={preferences} automaticSortSupported={workspaceSortSupported} />
+        ),
+      });
+    }
+
     if (showHostFilter) {
       definitions.push({
         id: "hostFilter",
@@ -396,6 +391,7 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
   }, [
     t,
     preferences,
+    workspaceSortSupported,
     hosts,
     showHostFilter,
     showProjectFilter,
@@ -442,8 +438,14 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
                 {t("sidebar.display.projectSort.label")}
               </MenuSubTrigger>
               <MenuSubTrigger
-                id="workspaceSort"
-                value={t(WORKSPACE_SORT_LABEL_KEYS[preferences.workspaceSort])}
+                id="sort"
+                value={
+                  workspaceSortSupported ||
+                  preferences.workspaceSort === "manual" ||
+                  preferences.workspaceSort === "activity"
+                    ? t(WORKSPACE_SORT_LABEL_KEYS[preferences.workspaceSort])
+                    : undefined
+                }
                 testID="sidebar-display-workspace-sort"
               >
                 {t("sidebar.display.workspaceSort.label")}
@@ -519,9 +521,58 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
               </MenuSubTrigger>
             </>
           ) : null}
+          <MenuSeparator />
+          <MenuItem
+            selected={preferences.showBackground}
+            closeOnSelect={false}
+            onSelect={preferences.toggleBackground}
+          >
+            {t("sidebar.display.showBackground")}
+          </MenuItem>
         </MenuSurface>
       </MenuRoot>
       <WorkspaceLabelManagerModal visible={managerOpen} onClose={closeManager} />
+    </>
+  );
+}
+
+function SortPage({
+  preferences,
+  automaticSortSupported,
+}: {
+  preferences: Preferences;
+  automaticSortSupported: boolean;
+}): ReactElement {
+  const { t } = useTranslation();
+  const { setWorkspaceSort } = preferences;
+  const selectManual = useCallback(() => setWorkspaceSort("manual"), [setWorkspaceSort]);
+  const selectCreated = useCallback(() => setWorkspaceSort("created"), [setWorkspaceSort]);
+  const selectLastPrompt = useCallback(() => setWorkspaceSort("lastPrompt"), [setWorkspaceSort]);
+  const selectActivity = useCallback(() => setWorkspaceSort("activity"), [setWorkspaceSort]);
+  return (
+    <>
+      <MenuItem selected={preferences.workspaceSort === "manual"} onSelect={selectManual}>
+        {t("sidebar.display.sort.manual")}
+      </MenuItem>
+      {automaticSortSupported ? (
+        <>
+          <MenuItem selected={preferences.workspaceSort === "created"} onSelect={selectCreated}>
+            {t("sidebar.display.sort.created")}
+          </MenuItem>
+          <MenuItem
+            selected={preferences.workspaceSort === "lastPrompt"}
+            onSelect={selectLastPrompt}
+          >
+            {t("sidebar.display.sort.lastPrompt")}
+          </MenuItem>
+        </>
+      ) : (
+        <MenuItem disabled>{t("sidebar.display.sort.updateHost")}</MenuItem>
+      )}
+      {/* Status times reach the app from every host, so this one needs no host update. */}
+      <MenuItem selected={preferences.workspaceSort === "activity"} onSelect={selectActivity}>
+        {t("sidebar.display.workspaceSort.recent")}
+      </MenuItem>
     </>
   );
 }

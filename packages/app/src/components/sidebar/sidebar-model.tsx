@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import React, {
   createContext,
   useContext,
@@ -87,7 +88,9 @@ export function SidebarModelProvider({
   active?: boolean;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   const list = useSidebarWorkspacesList({ enabled: active });
+  const showBackground = useSidebarViewStore((state) => state.showBackground);
   const groupMode = useSidebarViewStore((state) => state.groupMode);
   const {
     settings: { sidebarProjectWorkspaceDisplay },
@@ -143,7 +146,7 @@ export function SidebarModelProvider({
     hasActiveLabelFilter ||
     hasActiveRecencyWindow ||
     projectSort === "recent" ||
-    workspaceSort === "recent";
+    workspaceSort === "activity";
   const workspaceEntriesByKey = useSidebarWorkspaceEntries(
     list.workspacePlacements,
     active !== false || needsWorkspaceEntries,
@@ -153,14 +156,24 @@ export function SidebarModelProvider({
       workspaces: [...workspaceEntriesByKey.values()],
       projectFilters: resolvedProjectFilters,
     });
-    const byLabel = filterWorkspacesByLabels({ workspaces: byProject, ...labelFilter });
+    const byLabel = filterWorkspacesByLabels({
+      workspaces: byProject.filter((workspace) => showBackground || !workspace.background),
+      ...labelFilter,
+    });
     const filtered = filterWorkspacesByRecency({
       workspaces: byLabel,
       recencyWindow,
       now: recencyNow,
     });
     return new Map(filtered.map((workspace) => [workspace.workspaceKey, workspace]));
-  }, [recencyNow, recencyWindow, labelFilter, resolvedProjectFilters, workspaceEntriesByKey]);
+  }, [
+    showBackground,
+    recencyNow,
+    recencyWindow,
+    labelFilter,
+    resolvedProjectFilters,
+    workspaceEntriesByKey,
+  ]);
   const visibleWorkspaceKeys = useMemo(
     () => new Set(filteredWorkspaceEntriesByKey.keys()),
     [filteredWorkspaceEntriesByKey],
@@ -176,17 +189,20 @@ export function SidebarModelProvider({
       const included = new Set(resolvedProjectFilters);
       projects = projects.filter((project) => included.has(project.viewKey));
     }
-    if (hasActiveLabelFilter || hasActiveRecencyWindow) {
+    if (hasActiveLabelFilter || hasActiveRecencyWindow || !showBackground) {
       projects = projects.flatMap((project) => {
         const workspaces = project.workspaces.filter((workspace) =>
           visibleWorkspaceKeys.has(workspace.workspaceKey),
         );
-        return workspaces.length > 0 ? [{ ...project, workspaces }] : [];
+        return workspaces.length > 0 || (!hasActiveLabelFilter && project.workspaces.length === 0)
+          ? [workspaces.length === project.workspaces.length ? project : { ...project, workspaces }]
+          : [];
       });
     }
     return projects;
   }, [
     hasActiveRecencyWindow,
+    showBackground,
     hasActiveLabelFilter,
     hasActiveProjectFilter,
     resolvedProjectFilters,
@@ -203,7 +219,7 @@ export function SidebarModelProvider({
             workspaceEntriesByKey,
           })
         : filteredProjects;
-    return workspaceSort === "recent"
+    return workspaceSort === "activity"
       ? sortSidebarWorkspacesByRecentActivity({ projects, workspaceEntriesByKey })
       : projects;
   }, [filteredProjects, projectSort, workspaceSort, workspaceEntriesByKey]);
@@ -222,6 +238,7 @@ export function SidebarModelProvider({
           ? EMPTY_COLLAPSED_PROJECT_KEYS
           : collapsedProjectKeys,
       collapsedWorkspaceGroupKeys,
+      t,
     }),
     [
       collapsedProjectKeys,
@@ -234,6 +251,7 @@ export function SidebarModelProvider({
       pinnedKeys,
       pinnedWorkspaceOrder,
       filteredWorkspaceEntriesByKey,
+      t,
     ],
   );
   const projection = useMemo(() => buildSidebarProjection(projectionInput), [projectionInput]);

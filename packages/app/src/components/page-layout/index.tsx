@@ -1,10 +1,14 @@
 import { useMemo, type ReactNode } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Platform, ScrollView, Text, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StyleSheet } from "react-native-unistyles";
 import { BackHeader } from "@/components/headers/back-header";
 import { MenuHeader } from "@/components/headers/menu-header";
 import { useIsCompactFormFactor } from "@/constants/layout";
+import { SPACING } from "@/styles/theme";
+
+const PageScrollView = Platform.OS === "android" ? KeyboardAwareScrollView : ScrollView;
 
 interface PageLayoutProps {
   title?: string;
@@ -14,6 +18,8 @@ interface PageLayoutProps {
   onBack?: () => void;
   testID?: string;
   titleTestID?: string;
+  /** Controls for the whole page: right of the title on desktop, in the back header on compact. */
+  actions?: ReactNode;
   children: ReactNode;
 }
 
@@ -29,6 +35,7 @@ export function PageLayout({
   onBack,
   testID,
   titleTestID,
+  actions,
   children,
 }: PageLayoutProps) {
   const isCompact = useIsCompactFormFactor();
@@ -39,22 +46,29 @@ export function PageLayout({
   return (
     <View style={styles.container}>
       {isCompact ? (
-        <BackHeader title={title} onBack={onBack} />
+        <BackHeader title={title} onBack={onBack} rightContent={actions} />
       ) : (
         <MenuHeader title={headerTitle} />
       )}
-      <ScrollView style={styles.scroll} contentContainerStyle={scrollContentStyle} testID={testID}>
+      <PageScrollView
+        // Leave room for field borders and padding around the focused native input.
+        {...(Platform.OS === "android" ? { bottomOffset: SPACING[4] } : {})}
+        style={styles.scroll}
+        contentContainerStyle={scrollContentStyle}
+        testID={testID}
+      >
         <View style={styles.content}>
           {showTitle ? (
-            <View testID={titleTestID}>
+            <View style={styles.titleRow} testID={titleTestID}>
               <Text style={styles.title} testID="page-title">
                 {title}
               </Text>
+              {actions}
             </View>
           ) : null}
           {children}
         </View>
-      </ScrollView>
+      </PageScrollView>
     </View>
   );
 }
@@ -74,10 +88,16 @@ const styles = StyleSheet.create((theme) => ({
     maxWidth: 720,
     alignSelf: "center",
   },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: theme.spacing[4],
+    marginBottom: theme.spacing[6],
+  },
   title: {
     // Line up with the section titles, which sit inset from their cards.
     marginLeft: theme.spacing[1],
-    marginBottom: theme.spacing[6],
     fontSize: theme.fontSize["4xl"],
     fontWeight: theme.fontWeight.medium,
     color: theme.colors.foreground,
