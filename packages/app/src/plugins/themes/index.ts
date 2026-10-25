@@ -94,34 +94,61 @@ function buildDarkPluginTheme(contribution: PluginThemeContribution): Theme {
   );
 }
 
+function parseHexRgb(hex: string): [number, number, number] {
+  const digits = hex.slice(1);
+  const full =
+    digits.length === 3 ? [...digits].map((digit) => digit + digit).join("") : digits.slice(0, 6);
+  return [0, 2, 4].map((offset) => Number.parseInt(full.slice(offset, offset + 2), 16)) as [
+    number,
+    number,
+    number,
+  ];
+}
+
+function mixHex(from: string, to: string, amount: number): string {
+  const fromRgb = parseHexRgb(from);
+  const toRgb = parseHexRgb(to);
+  return `#${fromRgb
+    .map((channel, index) => Math.round(channel + (toRgb[index] - channel) * amount))
+    .map((channel) => channel.toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+// The light builder selects sidebar rows with surface4, and a plugin palette has only `ring` to
+// fill that slot. Ring is a text-strength tone, so a selected row painted with it hides its own
+// label. Step one shade past the border toward the foreground instead.
+const LIGHT_SIDEBAR_SELECTED_STEP = 0.05;
+
 function buildLightPluginTheme(contribution: PluginThemeContribution): Theme {
   const colors = contribution.colors;
   const accent = colors.accent ?? colors.foreground;
-  return buildLightTheme(
-    buildLightSemanticColors({
-      surface0: colors.background,
-      surface1: colors.raised,
-      surface2: colors.control,
-      surface3: colors.border,
-      surface4: colors.ring,
-      surfaceDiffEmpty: colors.raised,
-      surfaceSidebar: colors.control,
-      foreground: colors.foreground,
-      foregroundMuted: colors.mutedForeground,
-      foregroundExtraMuted: colors.ring,
-      border: colors.border,
-      borderAccent: colors.border,
-      accent,
-      accentBright: accent,
-      accentForeground: colors.background,
-      primary: colors.foreground,
-      primaryForeground: colors.background,
-      destructive: lightTheme.colors.destructive,
-      terminalBlack: colors.foreground,
-      terminalBrightBlack: colors.ring,
-      ring: colors.ring,
-    }),
-  );
+  const semanticColors = buildLightSemanticColors({
+    surface0: colors.background,
+    surface1: colors.raised,
+    surface2: colors.control,
+    surface3: colors.border,
+    surface4: colors.ring,
+    surfaceDiffEmpty: colors.raised,
+    surfaceSidebar: colors.control,
+    foreground: colors.foreground,
+    foregroundMuted: colors.mutedForeground,
+    foregroundExtraMuted: colors.ring,
+    border: colors.border,
+    borderAccent: colors.border,
+    accent,
+    accentBright: accent,
+    accentForeground: colors.background,
+    primary: colors.foreground,
+    primaryForeground: colors.background,
+    destructive: lightTheme.colors.destructive,
+    terminalBlack: colors.foreground,
+    terminalBrightBlack: colors.ring,
+    ring: colors.ring,
+  });
+  return buildLightTheme({
+    ...semanticColors,
+    surfaceSidebarSelected: mixHex(colors.border, colors.foreground, LIGHT_SIDEBAR_SELECTED_STEP),
+  });
 }
 
 function buildPluginTheme(contribution: PluginThemeContribution): Theme {
