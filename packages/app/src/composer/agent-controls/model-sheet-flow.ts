@@ -9,7 +9,7 @@ export function resolveModelSheetOpening({
   canSwitchProvider: boolean;
   providers: ProviderSelectorProvider[];
   selectedProvider: string;
-}): ModelBrowserView {
+}): Exclude<ModelBrowserView, { kind: "providers" }> {
   if (canSwitchProvider) return { kind: "all" };
 
   const provider = providers.find((entry) => entry.id === selectedProvider) ?? providers[0] ?? null;

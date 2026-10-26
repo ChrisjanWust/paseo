@@ -206,6 +206,7 @@ snapshot so a mixed edit can apply its live subset and still name the paths that
     appendSystemPrompt: string,    // appended to supported provider system/developer prompts
     terminalProfiles: TerminalProfile[],  // named shell commands; omitted means DEFAULT_TERMINAL_PROFILES
     agentProfiles: AgentProfile[],        // named agent launch bundles; omitted means none
+    modelFavorites: ModelFavorite[],      // { provider, modelId } pinned in the model picker; omitted means none
     cors: { allowedOrigins: string[] },
     relay: { enabled: boolean, endpoint: string, publicEndpoint: string, useTls: boolean, publicUseTls: boolean }, // new homes materialize enabled: false
     auth: { password: string }    // bcrypt hash, optional
@@ -265,11 +266,11 @@ explains their authority. An update prepares a new directory before replacing th
 removing the previous version. Old record fields are accepted at the store boundary and ignored;
 there is no startup migration or persistent update policy.
 
-### Profile lists
+### Profile and favourite lists
 
-`terminalProfiles` and `agentProfiles` are both whole-list fields: a config patch replaces the
-array, never merges entries, so a client sends the complete next list on every add, edit, reorder
-and remove. List order is the display order.
+`terminalProfiles`, `agentProfiles` and `modelFavorites` are whole-list fields: a config patch
+replaces the array, never merges entries, so a client sends the complete next list on every add,
+edit, reorder and remove. List order is the display order.
 
 Absent and empty mean different things for terminal profiles — omitting the key falls back to
 `DEFAULT_TERMINAL_PROFILES`, while `[]` means the user removed them all. Agent profiles have no
@@ -277,8 +278,9 @@ defaults, so both mean none.
 
 `PersistedConfigSchema` parses strictly, so a daemon that predates a field drops it on write
 rather than storing something it cannot describe. That is why the client gates the agent profiles
-UI on `server_info.features.agentProfiles` instead of letting a save appear to succeed against an
-older daemon.
+UI on `server_info.features.agentProfiles`, and the model picker's stars on
+`server_info.features.modelFavorites`, instead of letting a save appear to succeed against an older
+daemon.
 
 ### Agent provider Paseo tools
 

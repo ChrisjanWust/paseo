@@ -176,6 +176,22 @@
             "additionalProperties": {}
           }
         },
+        "modelFavorites": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "type": "string"
+              },
+              "modelId": {
+                "type": "string"
+              }
+            },
+            "required": ["provider", "modelId"],
+            "additionalProperties": {}
+          }
+        },
         "cors": {
           "type": "object",
           "properties": {

@@ -5,8 +5,13 @@ import {
   type ProviderSelectorProvider,
 } from "@/provider-selection/provider-selection";
 
+/**
+ * `all` is the root. With favourites it holds them and one row into
+ * `providers`, the provider list the root shows when there are none.
+ */
 export type ModelBrowserView =
   | { kind: "all" }
+  | { kind: "providers" }
   | { kind: "provider"; providerId: string; providerLabel: string };
 
 export function resolveModelBrowserScrolling({
@@ -75,18 +80,28 @@ export function resolveModelBrowserAllView({
   return { kind: "searchResults", rows };
 }
 
-/** Where the picker lands when it opens. A sole provider skips the redundant root view. */
+/**
+ * Where the picker lands when it opens. Favourites are the point of the root
+ * view, so they win over everything; otherwise a sole provider skips the
+ * redundant root view.
+ */
 export function resolveInitialModelBrowserView({
   providers,
   selectedProvider,
   selectedModel,
   hasProfiles,
+  hasFavorites,
 }: {
   providers: ProviderSelectorProvider[];
   selectedProvider: string;
   selectedModel: string;
   hasProfiles: boolean;
+  hasFavorites: boolean;
 }): ModelBrowserView {
+  if (hasFavorites) {
+    return { kind: "all" };
+  }
+
   const singleProvider = providers.length === 1 ? providers[0] : undefined;
   if (singleProvider) {
     return {

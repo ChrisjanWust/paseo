@@ -187,6 +187,7 @@ import type {
   AgentProfile,
   AgentSkillSelection,
   FirstAgentContext,
+  ModelFavorite,
   PluginSource,
   TerminalProfile,
 } from "@getpaseo/protocol/messages";
@@ -418,6 +419,7 @@ export interface PaseoDaemonConfig {
   appendSystemPrompt?: string;
   terminalProfiles?: TerminalProfile[];
   agentProfiles?: AgentProfile[];
+  modelFavorites?: ModelFavorite[];
   skillSelection?: AgentSkillSelection;
   pluginsEnabled?: boolean;
   plugins?: Record<string, PluginSource>;
@@ -589,6 +591,10 @@ function createInitialMutableDaemonConfig(config: PaseoDaemonConfig): MutableDae
 
   if (config.agentProfiles !== undefined) {
     initialConfig.agentProfiles = config.agentProfiles;
+  }
+
+  if (config.modelFavorites !== undefined) {
+    initialConfig.modelFavorites = config.modelFavorites;
   }
 
   return initialConfig;
