@@ -25,7 +25,7 @@ export interface ProviderSelectionModelRow {
   isDefault?: boolean;
 }
 
-function buildModelRowKey(provider: string, modelId: string): string {
+export function buildModelRowKey(provider: string, modelId: string): string {
   return `${provider}:${modelId}`;
 }
 

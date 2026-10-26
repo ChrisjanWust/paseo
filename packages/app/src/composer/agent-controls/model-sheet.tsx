@@ -135,7 +135,11 @@ export function CompactModelSheet({
   const rootHeader = useMemo(
     () => ({
       ...rootBrowser.header,
-      title: t("modelSelector.selectModel"),
+      // The "All models" step behind favourites keeps its own title.
+      title:
+        rootBrowser.view.kind === "providers"
+          ? rootBrowser.header.title
+          : t("modelSelector.selectModel"),
       search:
         rootBrowser.header.search && !canSwitchProvider
           ? {
@@ -144,7 +148,7 @@ export function CompactModelSheet({
             }
           : rootBrowser.header.search,
     }),
-    [canSwitchProvider, rootBrowser.header, t],
+    [canSwitchProvider, rootBrowser.header, rootBrowser.view.kind, t],
   );
 
   const open = useCallback(() => {

@@ -1,7 +1,9 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import type { ModelFavorite } from "@getpaseo/protocol/messages";
+import type { ModelFavorite, MutableDaemonConfig } from "@getpaseo/protocol/messages";
 import { useToast } from "@/contexts/toast-context";
+import { daemonConfigQueryKey } from "@/data/daemon-config";
 import { useDaemonConfig } from "@/hooks/use-daemon-config";
 import { useSessionStore } from "@/stores/session-store";
 import { toErrorMessage } from "@/utils/error-messages";
@@ -25,15 +27,13 @@ export interface ModelFavorites {
 export function useModelFavorites(serverId: string | null): ModelFavorites | null {
   const { t } = useTranslation();
   const toast = useToast();
+  const queryClient = useQueryClient();
   const { config, patchConfig } = useDaemonConfig(serverId);
   const isSupported = useSessionStore(
     (state) => state.sessions[serverId ?? ""]?.serverInfo?.features?.modelFavorites === true,
   );
-  // A star flips on press; the saved list replaces it once the patch lands.
-  const [pending, setPending] = useState<ModelFavorite[] | null>(null);
-  const latestToggle = useRef(0);
 
-  const favorites = pending ?? config?.modelFavorites ?? NO_FAVORITES;
+  const favorites = config?.modelFavorites ?? NO_FAVORITES;
   const favoriteKeys = useMemo(() => new Set(favorites.map(modelFavoriteKey)), [favorites]);
 
   const isFavorite = useCallback(
@@ -42,33 +42,36 @@ export function useModelFavorites(serverId: string | null): ModelFavorites | nul
   );
 
   const save = useCallback(
-    async (next: ModelFavorite[], toggleId: number) => {
+    async (next: ModelFavorite[]) => {
       try {
-        const saved = await patchConfig({ modelFavorites: next });
-        if (!saved) {
-          toast.error(t("modelSelector.favoritesSaveFailed"));
+        if (await patchConfig({ modelFavorites: next })) {
+          return;
         }
+        toast.error(t("modelSelector.favoritesSaveFailed"));
       } catch (error) {
         toast.error(`${t("modelSelector.favoritesSaveFailed")}: ${toErrorMessage(error)}`);
-      } finally {
-        // An earlier save settling must not drop a later star's pending state.
-        if (latestToggle.current === toggleId) {
-          setPending(null);
-        }
       }
+      // Drop the optimistic list for whatever the host actually saved.
+      void queryClient.invalidateQueries({ queryKey: daemonConfigQueryKey(serverId) });
     },
-    [patchConfig, t, toast],
+    [patchConfig, queryClient, serverId, t, toast],
   );
 
+  // The star flips through the host's cached config rather than local state:
+  // every picker on this host reads that cache, and a star pressed before the
+  // previous save returns builds on it instead of replacing it with a stale list.
   const toggle = useCallback(
     (model: ModelFavorite) => {
-      const next = toggleModelFavorite(favorites, model);
-      const toggleId = latestToggle.current + 1;
-      latestToggle.current = toggleId;
-      setPending(next);
-      void save(next, toggleId);
+      const queryKey = daemonConfigQueryKey(serverId);
+      const current = queryClient.getQueryData<MutableDaemonConfig>(queryKey);
+      if (!current) {
+        return;
+      }
+      const next = toggleModelFavorite(current.modelFavorites ?? NO_FAVORITES, model);
+      queryClient.setQueryData(queryKey, { ...current, modelFavorites: next });
+      void save(next);
     },
-    [favorites, save],
+    [queryClient, save, serverId],
   );
 
   return useMemo(() => {

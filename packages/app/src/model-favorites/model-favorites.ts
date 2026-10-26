@@ -1,7 +1,8 @@
 import type { ModelFavorite } from "@getpaseo/protocol/messages";
-import type {
-  ProviderSelectionModelRow,
-  ProviderSelectorProvider,
+import {
+  buildModelRowKey,
+  type ProviderSelectionModelRow,
+  type ProviderSelectorProvider,
 } from "@/provider-selection/provider-selection";
 
 export function modelFavoriteKey({ provider, modelId }: ModelFavorite): string {
@@ -54,7 +55,7 @@ export function resolveFavoriteModelRows(
     }
     if (selection.kind === "loading") {
       rows.push({
-        favoriteKey: `${favorite.provider}:${favorite.modelId}`,
+        favoriteKey: buildModelRowKey(favorite.provider, favorite.modelId),
         provider: favorite.provider,
         providerLabel: provider.label,
         modelId: favorite.modelId,
