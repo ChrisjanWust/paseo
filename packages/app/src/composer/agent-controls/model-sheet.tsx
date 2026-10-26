@@ -127,6 +127,7 @@ export function CompactModelSheet({
     isLoading,
     autoFocusSearch: isWeb && !usesBottomSheet,
     profiles,
+    pinFavorites: false,
     serverId,
   });
   const ModelIcon = useProviderIcon(selectedProvider, serverId);

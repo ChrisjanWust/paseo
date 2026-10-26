@@ -63,6 +63,7 @@ describe("model browser initial view", () => {
         selectedProvider: "",
         selectedModel: "",
         hasProfiles: false,
+        hasFavorites: false,
       }),
     ).toEqual({ kind: "provider", providerId: "pi", providerLabel: "Pi" });
   });
@@ -74,6 +75,7 @@ describe("model browser initial view", () => {
         selectedProvider: "pi",
         selectedModel: "pi-pro",
         hasProfiles: false,
+        hasFavorites: false,
       }),
     ).toEqual({ kind: "provider", providerId: "pi", providerLabel: "Pi" });
   });
@@ -85,6 +87,7 @@ describe("model browser initial view", () => {
         selectedProvider: "pi",
         selectedModel: "pi-pro",
         hasProfiles: true,
+        hasFavorites: false,
       }),
     ).toEqual({ kind: "all" });
   });
@@ -96,8 +99,21 @@ describe("model browser initial view", () => {
         selectedProvider: "pi",
         selectedModel: "pi-pro",
         hasProfiles: true,
+        hasFavorites: false,
       }),
     ).toEqual({ kind: "provider", providerId: "pi", providerLabel: "Pi" });
+  });
+
+  it("opens the root when there are favourites, even with a sole provider", () => {
+    expect(
+      resolveInitialModelBrowserView({
+        providers: [pi],
+        selectedProvider: "pi",
+        selectedModel: "pi-pro",
+        hasProfiles: false,
+        hasFavorites: true,
+      }),
+    ).toEqual({ kind: "all" });
   });
 
   it("falls back to the root when the selected provider is gone", () => {
@@ -107,6 +123,7 @@ describe("model browser initial view", () => {
         selectedProvider: "gemini",
         selectedModel: "gemini-3",
         hasProfiles: false,
+        hasFavorites: false,
       }),
     ).toEqual({ kind: "all" });
   });

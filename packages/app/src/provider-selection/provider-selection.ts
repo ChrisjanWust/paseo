@@ -13,8 +13,8 @@ import { filterSelectableModels } from "./model-catalog";
 export interface ProviderSelectionModelRow {
   /**
    * Row identity — `provider:modelId`. Used as the React key and as the row's
-   * stable handle across list rebuilds. The name is historical; it has nothing
-   * to do with the removed favourites feature.
+   * stable handle across list rebuilds. The name is historical; model
+   * favourites key on `provider` and `modelId` directly.
    */
   favoriteKey: string;
   provider: string;

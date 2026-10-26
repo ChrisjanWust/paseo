@@ -29,6 +29,7 @@ function reloadableConfig(
     appendSystemPrompt: daemon.appendSystemPrompt ?? "",
     terminalProfiles: daemon.terminalProfiles,
     agentProfiles: daemon.agentProfiles,
+    modelFavorites: daemon.modelFavorites,
     cors: { allowedOrigins: [] },
     trustedProxies: ["loopback"],
     git: {
@@ -217,6 +218,32 @@ describe("DaemonConfigStore", () => {
 
     expect(store.get().agentProfiles).toEqual([{ id: "a", name: "Keep", provider: "claude" }]);
     expect(loadPersistedConfig(paseoHome).daemon?.agentProfiles).toHaveLength(1);
+  });
+
+  test("persists model favourites and replaces the whole list on patch", () => {
+    const paseoHome = mkdtempSync(path.join(tmpdir(), "paseo-daemon-config-store-"));
+    tempDirs.push(paseoHome);
+    const store = new DaemonConfigStore(paseoHome, {
+      relay: { enabled: false },
+      mcp: { injectIntoAgents: false },
+      browserTools: { enabled: false },
+      providers: {},
+      metadataGeneration: { providers: [] },
+      autoArchiveAfterMerge: false,
+      enableTerminalAgentHooks: false,
+      appendSystemPrompt: "",
+      modelFavorites: [
+        { provider: "claude", modelId: "claude-opus-5-5" },
+        { provider: "codex", modelId: "gpt-6-astra" },
+      ],
+    });
+
+    store.patch({ modelFavorites: [{ provider: "codex", modelId: "gpt-6-astra" }] });
+
+    expect(store.get().modelFavorites).toEqual([{ provider: "codex", modelId: "gpt-6-astra" }]);
+    expect(loadPersistedConfig(paseoHome).daemon?.modelFavorites).toEqual([
+      { provider: "codex", modelId: "gpt-6-astra" },
+    ]);
   });
 
   test("rolls back config when a field transition fails", () => {
