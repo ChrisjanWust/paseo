@@ -26,14 +26,22 @@ describe("zoomable viewport geometry", () => {
     });
   });
 
-  it("fits within presentation padding and caps without shrinking the zoom viewport", () => {
-    expect(
-      fitContentSize({ width: 1600, height: 800 }, viewport, {
-        padding: 20,
-        maxWidth: 600,
-        maxHeight: 500,
-      }),
-    ).toEqual({ width: 600, height: 300 });
+  it("fits within presentation padding, shrinking padding that would crowd out the content", () => {
+    expect(fitContentSize({ width: 1600, height: 800 }, viewport, { padding: 20 })).toEqual({
+      width: 760,
+      height: 380,
+    });
+    expect(fitContentSize({ width: 1600, height: 800 }, viewport, { padding: 400 })).toEqual({
+      width: 800 * (2 / 3),
+      height: 400 * (2 / 3),
+    });
+  });
+
+  it("limits how far small content is enlarged to fit", () => {
+    expect(fitContentSize({ width: 100, height: 50 }, viewport, { maxContentScale: 2 })).toEqual({
+      width: 200,
+      height: 100,
+    });
   });
 
   it("distinguishes backdrop taps from taps on transformed content", () => {

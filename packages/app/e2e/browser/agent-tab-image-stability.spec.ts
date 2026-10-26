@@ -104,6 +104,8 @@ test("opens a timeline image in a zoomable lightbox", async ({
   const image = await createSmallAssistantPng(workspace, {
     alt: "Zoomable timeline image",
     fileName: "zoomable-timeline-image.png",
+    width: 400,
+    height: 200,
   });
   const imageAgent = await createSettledMockAgent(workspace, "Zoomable image timeline");
   await emitSettledAssistantImage(workspace.client, imageAgent, image);
@@ -144,6 +146,59 @@ test("opens a timeline image in a zoomable lightbox", async ({
   await page.keyboard.press("Escape");
   await expect(lightboxImage).toHaveCount(0);
   await expectAgentReadyToInterrupt(page);
+});
+
+test("fits lightbox images to a wide window with a margin, enlarging small ones at most 2x", async ({
+  imageWorkspace: workspace,
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  const wideImage = await createSmallAssistantPng(workspace, {
+    alt: "Wide lightbox image",
+    fileName: "wide-lightbox-image.png",
+    width: 2400,
+    height: 600,
+  });
+  const smallImage = await createSmallAssistantPng(workspace, {
+    alt: "Small lightbox image",
+    fileName: "small-lightbox-image.png",
+    width: 200,
+    height: 100,
+  });
+  const imageAgent = await createSettledMockAgent(workspace, "Lightbox fit timeline");
+  await emitSettledAssistantImage(workspace.client, imageAgent, wideImage);
+  await emitSettledAssistantImage(workspace.client, imageAgent, smallImage);
+  await openAssistantImageTimeline(page, imageAgent);
+  await expectAssistantImageRendered(page, wideImage);
+  await expectAssistantImageRendered(page, smallImage);
+
+  const margin = 128;
+  const canvas = page.getByTestId("attachment-lightbox-canvas");
+  const fittedContent = canvas.locator(":scope > div").first();
+
+  await page.getByRole("button", { name: wideImage.alt }).click();
+  await expect(page.getByTestId("attachment-lightbox-image")).toBeVisible();
+  const canvasBox = await canvas.boundingBox();
+  expect(canvasBox).not.toBeNull();
+  const expectedWidth = canvasBox!.width - margin * 2;
+  await expect
+    .poll(async () => {
+      const box = await fittedContent.boundingBox();
+      return box && { x: Math.round(box.x - canvasBox!.x), width: Math.round(box.width) };
+    })
+    .toEqual({ x: margin, width: Math.round(expectedWidth) });
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("attachment-lightbox-image")).toHaveCount(0);
+
+  await page.getByRole("button", { name: smallImage.alt }).click();
+  await expect(page.getByTestId("attachment-lightbox-image")).toBeVisible();
+  await expect
+    .poll(async () => {
+      const box = await fittedContent.boundingBox();
+      return box && { width: Math.round(box.width), height: Math.round(box.height) };
+    })
+    .toEqual({ width: smallImage.width * 2, height: smallImage.height * 2 });
 });
 
 test("reloading a timeline reserves image height without a load-time scroll jump", async ({

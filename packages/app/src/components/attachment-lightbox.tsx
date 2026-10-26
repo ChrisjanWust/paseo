@@ -7,6 +7,7 @@ import { X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import type { AttachmentMetadata } from "@/attachments/types";
 import { useAttachmentPreviewUrl } from "@/attachments/use-attachment-preview-url";
+import { useIsCompactFormFactor } from "@/constants/layout";
 import { isNative, isWeb } from "@/constants/platform";
 import { SPACING } from "@/styles/theme";
 import { WindowChromeRootRegion } from "@/utils/desktop-window";
@@ -24,11 +25,13 @@ interface AttachmentLightboxProps {
 }
 
 const ModalRoot = isNative ? GestureHandlerRootView : View;
-const LIGHTBOX_FIT = { padding: SPACING[4], maxWidth: 960, maxHeight: 640 };
+const LIGHTBOX_FIT = { padding: SPACING[32], maxContentScale: 2 };
+const COMPACT_LIGHTBOX_FIT = { padding: SPACING[4], maxContentScale: 2 };
 
 export function AttachmentLightbox({ source, onClose }: AttachmentLightboxProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const isCompact = useIsCompactFormFactor();
   const metadata = source?.type === "attachment" ? source.metadata : null;
   const attachmentUrl = useAttachmentPreviewUrl(metadata);
   const url = source?.type === "uri" ? source.uri : attachmentUrl;
@@ -109,7 +112,7 @@ export function AttachmentLightbox({ source, onClose }: AttachmentLightboxProps)
                     accessibilityLabel={t("composer.attachments.openImage")}
                     actions={actions}
                     contentSize={contentSize}
-                    fit={LIGHTBOX_FIT}
+                    fit={isCompact ? COMPACT_LIGHTBOX_FIT : LIGHTBOX_FIT}
                     onError={handleImageError}
                     onPressOutsideContent={onClose}
                     style={styles.imageViewport}
