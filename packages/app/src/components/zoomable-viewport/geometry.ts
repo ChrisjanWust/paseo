@@ -21,8 +21,8 @@ export interface ViewportScaleLimits {
 
 export interface ViewportFitOptions {
   padding?: number;
-  maxWidth?: number;
-  maxHeight?: number;
+  // Caps the fit relative to the content's natural size so small images don't blur.
+  maxContentScale?: number;
 }
 
 export const FIT_TRANSFORM: ViewportTransform = { scale: 1, x: 0, y: 0 };
@@ -57,15 +57,14 @@ export function fitContentSize(
   options: ViewportFitOptions = {},
 ): ViewportSize {
   const padding = options.padding ?? 0;
-  const availableWidth = Math.max(
-    0,
-    Math.min(viewport.width - padding * 2, options.maxWidth ?? Number.POSITIVE_INFINITY),
+  // Padding never takes more than a third of an axis, so short windows still show the content.
+  const availableWidth = viewport.width - Math.min(padding, viewport.width / 6) * 2;
+  const availableHeight = viewport.height - Math.min(padding, viewport.height / 6) * 2;
+  const fitScale = Math.min(
+    availableWidth / content.width,
+    availableHeight / content.height,
+    options.maxContentScale ?? Number.POSITIVE_INFINITY,
   );
-  const availableHeight = Math.max(
-    0,
-    Math.min(viewport.height - padding * 2, options.maxHeight ?? Number.POSITIVE_INFINITY),
-  );
-  const fitScale = Math.min(availableWidth / content.width, availableHeight / content.height);
   return {
     width: content.width * fitScale,
     height: content.height * fitScale,
